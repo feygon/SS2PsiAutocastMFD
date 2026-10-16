@@ -1,6 +1,6 @@
 [size=5][b]psi_autocast_mfd: an in-game psi macro MFD[/b][/size]
 
-Plan your psionics and build [url=https://www.nexusmods.com/systemshock225thanniversaryremaster/mods/20]psi_autocast[/url] macros without leaving the game. Press one key, and an MFD in the game's own teal style opens over the view.
+Plan your psionics and build [url=https://www.nexusmods.com/systemshock225thanniversaryremaster/mods/20]psi-autocast[/url] macros without leaving the game. Press one key, and an MFD in the game's own teal style opens over the view.
 
 [line]
 [size=4][b]What it shows[/b][/size]
@@ -22,7 +22,7 @@ The numbers are read from the running game, so they follow SCP if you use it. Cy
 [*]Options: draw the psi amp first, how long to wait for it, and auto psi hypo.[/*]
 [*][b]Save[/b], close the MFD, and press the key. psi_autocast runs the macro.[/*]
 [/list]
-Scroll the table with the Up / Dn buttons, or jump to a tier with T1-T5. With the optional wheel lines (below), the mouse wheel scrolls it too when the mouse is over the MFD, and still switches weapons everywhere else.
+Scroll the table with the Up / Dn buttons, or jump to a tier with T1-T5. With the optional wheel lines (below), the mouse wheel scrolls it too when the cursor is over the MFD, and still switches weapons everywhere else.
 
 [line]
 [size=4][b]Setup[/b][/size]
@@ -30,21 +30,23 @@ Scroll the table with the Up / Dn buttons, or jump to a tier with T1-T5. With th
 [*]Install and enable [url=https://www.nexusmods.com/systemshock225thanniversaryremaster/mods/20]psi_autocast[/url] 1.2 or later.[/*]
 [*]Extract this mod into the [b]game folder[/b], the one with [b]SystemShock2Remastered.exe[/b] (not the save folder). It adds [i]mods\psi_autocast_mfd.kpf[/i]. The MFD creates its own [i]psi_macros[/i] folder in your save folder the first time you save a macro.[/*]
 [*]New Game → Mods → add [b]psi_autocast_mfd[/b] (keep psi_autocast) → Apply → start, then load your save and make a regular save.[/*]
-[*]With the game closed, set up your keys: run the setup script, or add the lines yourself (both explained below).[/*]
+[*]With the game closed, set up your keys: run the setup script (GitHub release only), or add the lines yourself (both explained below).[/*]
 [/list]
-
+Setup Script (GitHub only):
 [spoiler][size=4][b]The setup script[/b][/size]
-[url=https://github.com/feygon/SS2PsiAutocastMFD/blob/main/extras/setupPsiMfd.bat]setupPsiMfd.bat[/url], from GitHub, writes the [i]user.bnd[/i] lines for you. Run it with the game closed. It:
+[url=https://github.com/feygon/SS2PsiAutocastMFD/releases/latest]setupPsiMfd.bat[/url], from the GitHub release, writes the [i]user.bnd[/i] lines for you. Run it with the game closed. It:
 [list]
-[*]binds an open key: keypad *, or another free key;[/*]
-[*]binds a macro key on every plain key you haven't bound: letters, digits, F-keys, then keypad and navigation keys;[/*]
+[*]binds an open key to the MFD: default keypad *, or another free key;[/*]
 [*]binds keypad + to psi_autocast's cancel key, if it's free;[/*]
+[*]binds a macro key on every plain key you haven't bound: letters, digits, F-keys, then keypad and navigation keys (i.e. home, ins, end);[/*]
 [*]asks you, one key at a time (y/n), about a key you've already bound only if the game doesn't bind it by default and its command is also on another key, so saying yes never loses a command; it changes no other binding;[/*]
 [*]never uses Enter, Esc, Tab, Space, Backspace, modifier keys or punctuation;[/*]
 [*]asks (y/n) whether the mouse wheel should scroll the MFD, only while the wheel has the game's default bindings or none;[/*]
 [*]backs up [i]user.bnd[/i] first, lists every key it bound, and adds only what's missing if you run it again.[/*]
-[/list][/spoiler]
+[/list]
+[/spoiler]
 
+Manual Setup:
 [spoiler][size=4][b]The user.bnd lines[/b][/size]
 [i]user.bnd[/i] is in [i]%USERPROFILE%\Saved Games\Nightdive Studios\System Shock 2 Remastered\[/i]. Back it up, then add these with the game closed. The game rewrites the file when it exits, so edits made while it's running are lost.
 
@@ -55,7 +57,7 @@ Each macro key runs its own file. Add one line per key you want, changing the ke
 bind keypad_del "run user:/psi_macros\MacroKPDel.cmd"[/code]
 The MFD finds your macro keys by reading these lines, so every key you add this way appears in its selector. Scripts can't bind keys while the game runs, which is why this step happens once, outside the game.
 
-Optional: the mouse wheel scrolls the MFD when the mouse is over it, and switches weapons everywhere else. Replace the two [i]mouse_wheel[/i] lines with:
+Optional: the mouse wheel scrolls the MFD when the cursor is over it, and switches weapons everywhere else. Replace the two [i]mouse_wheel[/i] lines with:
 [code]bind mouse_wheel_up "summon_obj PsiMfdWheelUp"
 bind mouse_wheel_down "summon_obj PsiMfdWheelDown"[/code]
 In a save without psi_autocast_mfd enabled, the wheel then doesn't switch weapons. To undo, put back [i]bind mouse_wheel_up "cycle_weapon 1"[/i] and [i]bind mouse_wheel_down "cycle_weapon -1"[/i].[/spoiler]
@@ -72,6 +74,5 @@ The mod itself is four text files: no images, nothing downloaded. The discipline
 [*][url=https://www.nexusmods.com/systemshock225thanniversaryremaster/mods/20]psi_autocast[/url], enabled alongside it.[/*]
 [*]Tested alongside the remaster's bundled mods (SCP beta 6, SHTUP, Four Hundred, patch_ext). Multiplayer is untested.[/*]
 [/list]
-
 [size=4][b]Source and license[/b][/size]
 MIT licensed. Source and developer notes: [url=https://github.com/feygon/SS2PsiAutocastMFD]github.com/feygon/SS2PsiAutocastMFD[/url]
