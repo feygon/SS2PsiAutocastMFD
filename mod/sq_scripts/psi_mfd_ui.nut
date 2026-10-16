@@ -622,22 +622,3 @@ if (!("psiDisciplines" in ND))
 ND.Archetype("PsiMfd", "ND", function(){ AddScript("PsiMfd"); });
 ND.Archetype("PsiMfdWheelUp", "ND", function(){ AddScript("PsiMfdWheel"); });
 ND.Archetype("PsiMfdWheelDown", "ND", function(){ AddScript("PsiMfdWheel"); });
-
-// Dev: overlay numbers for "open_mfd <n>" (the console takes the number, scripts the constant).
-foreach (name in ["kOverlayBuyPsi", "kOverlayBuyStats", "kOverlayBuyTech", "kOverlayBuyWeapon", "kOverlayBuyTraits",
-	"kOverlayPsi", "kOverlayMap", "kOverlaySecurity", "kOverlayElevator"]) {
-	try {
-		local found = false;
-		foreach (table in [getconsttable(), getroottable()]) {
-			if (!found && name in table) {
-				print("[psi_mfd] overlay " + name + " = " + table[name]);
-				found = true;
-			}
-		}
-		if (!found)
-			print("[psi_mfd] overlay " + name + " not found");
-	}
-	catch (e) {
-		print("[psi_mfd] overlay " + name + " not readable: " + e);
-	}
-}

@@ -1,6 +1,7 @@
 """Build psi_autocast_mfd.kpf, or install it into the game.
 
     py build.py                  build dist/psi_autocast_mfd.kpf
+    py build.py --package        also build dist/psi_autocast_mfd_v<version>.zip for release (never with --dev)
     py build.py --install        also copy it into <game>\\mods (game must be closed)
     py build.py --dev ...        include dev/sq_scripts (capability probe) in the .kpf, and with
                                  --install also copy dev/*.cmd into <game>\\psi\\; never for release
@@ -8,6 +9,7 @@
 Requires the psi_autocast mod (https://github.com/feygon/SS2PsiAutocast) to be installed and enabled.
 """
 import argparse
+import json
 import shutil
 import sys
 import zipfile
@@ -20,6 +22,11 @@ MOD_SOURCE = PROJECT_DIR / "mod"
 DEV_SOURCE = PROJECT_DIR / "dev"
 DIST_DIR = PROJECT_DIR / "dist"
 KPF_PATH = DIST_DIR / "psi_autocast_mfd.kpf"
+RELEASE_DOCS = ["README.md", "LICENSE"]
+
+
+def mod_version():
+    return json.loads((MOD_SOURCE / "modinfo.json").read_text())["version"]
 
 
 def build_kpf(include_dev=False):
@@ -33,6 +40,16 @@ def build_kpf(include_dev=False):
                 if file.is_file():
                     kpf.write(file, file.relative_to(DEV_SOURCE).as_posix())
     print(f"built {KPF_PATH.name}" + (" (with dev tools)" if include_dev else ""))
+
+
+def package_release():
+    """Lay the zip out like the game folder, so players can extract it straight in."""
+    release = DIST_DIR / f"psi_autocast_mfd_v{mod_version()}.zip"
+    with zipfile.ZipFile(release, "w", zipfile.ZIP_DEFLATED) as package:
+        package.write(KPF_PATH, f"mods/{KPF_PATH.name}")
+        for doc in RELEASE_DOCS:
+            package.write(PROJECT_DIR / doc, f"psi/psi_autocast_mfd_{doc}")
+    print(f"packaged {release.name}")
 
 
 def game_is_running():
@@ -61,10 +78,15 @@ def install(include_dev):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--package", action="store_true", help="build the release zip")
     parser.add_argument("--install", action="store_true", help="copy the build into the game")
     parser.add_argument("--dev", action="store_true", help="include dev tools (never for release)")
     args = parser.parse_args()
+    if args.dev and args.package:
+        parser.error("--dev builds must not be packaged for release")
     build_kpf(include_dev=args.dev)
+    if args.package:
+        package_release()
     return install(args.dev) if args.install else 0
 
 

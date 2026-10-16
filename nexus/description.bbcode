@@ -1,0 +1,72 @@
+[size=5][b]psi_autocast_mfd: an in-game psi macro MFD[/b][/size]
+
+Plan your psionics and build [url=https://www.nexusmods.com/systemshock225thanniversaryremaster/mods/20]psi_autocast[/url] macros without leaving the game. Press one key, and an MFD in the game's own teal style opens over the view.
+
+[line]
+[size=4][b]What it shows[/b][/size]
+A scrolling table of all 35 disciplines, each with its icon, tier and name, and:
+[list]
+[*][b]Duration[/b] at your current PSI and at PSI 8.[/*]
+[*][b]Effect[/b] at your current PSI and at PSI 8: damage, healing, stat bonus, chance or recharge, whichever the discipline has.[/*]
+[*][b]Overload[/b]: what an overload gives you, for the disciplines that benefit from one.[/*]
+[*][b]Cyber Mods[/b]: "bought", or what it costs, including every tier you still need to unlock to reach it.[/*]
+[/list]
+The numbers are read from the running game, so they follow SCP if you use it. Cyber module costs follow your difficulty, rounded the way the game rounds them.
+
+[line]
+[size=4][b]Building macros[/b][/size]
+[list]
+[*]Pick a [b]macro key[/b] at the top or bottom of the MFD.[/*]
+[*]Click a discipline, or its [b]+Overload[/b] / [b]+Quick[/b] button, to add a cast.[/*]
+[*]Add psi hypos, change the waits between steps, and finish with a switch back to your previous weapon or to any weapon.[/*]
+[*]Options: draw the psi amp first, how long to wait for it, and auto psi hypo.[/*]
+[*][b]Save[/b], close the MFD, and press the key. psi_autocast runs the macro.[/*]
+[/list]
+The mouse wheel scrolls the table when the cursor is over the MFD, and switches weapons everywhere else.
+
+[line]
+[size=4][b]Setup[/b][/size]
+[list=1]
+[*]Install and enable [url=https://www.nexusmods.com/systemshock225thanniversaryremaster/mods/20]psi_autocast[/url] 1.2 or later.[/*]
+[*]Extract this mod into the [b]game folder[/b], the one with [b]SystemShock2Remastered.exe[/b] (not the save folder). It adds [i]mods\psi_autocast_mfd.kpf[/i]. The MFD creates its own [i]psi_macros[/i] folder in your save folder the first time you save a macro.[/*]
+[*]New Game → Mods → add [b]psi_autocast_mfd[/b] (keep psi_autocast) → Apply → start, then load your save and make a regular save.[/*]
+[*]With the game closed, set up your keys: run the setup script, or add the lines yourself (both below).[/*]
+[/list]
+
+[spoiler][size=4][b]The setup script[/b][/size]
+[url=https://github.com/feygon/SS2PsiAutocastMFD/blob/main/extras/setupPsiMfd.bat]setupPsiMfd.bat[/url], from GitHub, writes the [i]user.bnd[/i] lines for you. Run it with the game closed. It:
+[list]
+[*]binds an open key: keypad *, or another free key;[/*]
+[*]binds a macro key on every plain key you haven't bound: letters, digits, F-keys, then keypad and navigation keys;[/*]
+[*]binds keypad + to psi_autocast's cancel key, if it's free;[/*]
+[*]never changes a key you've already bound, and never uses Enter, Esc, Tab, Space, Backspace, modifier keys or punctuation;[/*]
+[*]leaves the mouse wheel alone;[/*]
+[*]backs up [i]user.bnd[/i] first, lists every key it bound, and adds only what's missing if you run it again.[/*]
+[/list][/spoiler]
+
+[spoiler][size=4][b]The user.bnd lines[/b][/size]
+[i]user.bnd[/i] is in [i]%USERPROFILE%\Saved Games\Nightdive Studios\System Shock 2 Remastered\[/i]. Back it up, then add these with the game closed. The game rewrites the file when it exits, so edits made while it's running are lost.
+
+One key opens and closes the MFD:
+[code]bind keypad_star "summon_obj PsiMfd"[/code]
+Each macro key runs its own file. Add one line per key you want, changing the key and the file name together:
+[code]bind keypad_minus "run user:/psi_macros\MacroKPMinus.cmd"
+bind keypad_del "run user:/psi_macros\MacroKPDel.cmd"[/code]
+Optional: the mouse wheel scrolls the MFD in cursor mode, and still switches weapons everywhere else:
+[code]game2 bind mouse_wheel_up "summon_obj PsiMfdWheelUp"
+game2 bind mouse_wheel_down "summon_obj PsiMfdWheelDown"[/code]
+The MFD finds your macro keys by reading these lines, so every key you add this way appears in its selector. Scripts can't bind keys while the game runs, which is why this step happens once, outside the game.[/spoiler]
+
+[line]
+[size=4][b]What it writes[/b][/size]
+The MFD saves each macro as a small text file in [i]Saved Games\Nightdive Studios\System Shock 2 Remastered\psi_macros\[/i], one per key, in the same format the psi_autocast Macro Builder writes. It reads [i]user.bnd[/i] to find your macro keys and never changes it. It doesn't touch the game folder.
+
+[size=4][b]Requirements[/b][/size]
+[list]
+[*]System Shock 2: 25th Anniversary Remaster on PC. Tested on the Epic version, game version 1.3.4984.[/*]
+[*][url=https://www.nexusmods.com/systemshock225thanniversaryremaster/mods/20]psi_autocast[/url], enabled alongside it.[/*]
+[*]Tested alongside the remaster's bundled mods (SCP beta 6, SHTUP, Four Hundred, patch_ext). Multiplayer is untested.[/*]
+[/list]
+
+[size=4][b]Source and license[/b][/size]
+MIT licensed. Source and developer notes: [url=https://github.com/feygon/SS2PsiAutocastMFD]github.com/feygon/SS2PsiAutocastMFD[/url]
