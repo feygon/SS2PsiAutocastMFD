@@ -1,0 +1,7 @@
+{
+	"title": "psi_autocast_mfd",
+	"version": "0.1",
+	"description": "An in-game MFD for psi_autocast: build psi macros and bind them to keys without leaving the game. Writes the macro files it makes to disk. Requires psi_autocast.",
+	"author": "feygon",
+	"requirements": ["psi_autocast"]
+}
