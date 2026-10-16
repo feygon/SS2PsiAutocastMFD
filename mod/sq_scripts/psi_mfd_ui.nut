@@ -373,7 +373,7 @@ class PsiMfdPanel extends ND.UiBase {
 	function FinishText() {
 		if (!m_macro || m_macro.finish == "")
 			return "none";
-		return m_macro.finish == "last" ? "previous weapon" : PsiUnderscoresToSpaces(m_macro.finish.slice(7));
+		return m_macro.finish == "last" ? "previous weapon" : PsiMfdUnderscoresToSpaces(m_macro.finish.slice(7));
 	}
 
 	// Shows the selected key's macro, reading it from disk the first time it's shown after opening.
@@ -544,6 +544,9 @@ class PsiMfdPanel extends ND.UiBase {
 // are created, and the engine warns if that happens outside DrawHUD.
 ND.psiMfdOpen <- false;
 ND.psiMfdWasOpen <- false;
+ND.psiMfdSeenCursor <- false;  // the cursor has been up since the MFD opened
+ND.psiMfdOpenFor <- 0.0;       // seconds since the MFD opened
+const PSI_MFD_CURSOR_WAIT = 1.0; // the open key asks for the cursor; close if it hasn't come up by then
 ND.psiMfdPanel <- null;
 
 class PsiMfdHandler {
@@ -551,7 +554,7 @@ class PsiMfdHandler {
 
 	function OnFrameUpdate(deltaTime) {
 		try {
-			Update();
+			Update(deltaTime);
 		}
 		catch (e) {
 			PsiMfdFail("frame update", e);
@@ -561,16 +564,29 @@ class PsiMfdHandler {
 		}
 	}
 
-	function Update() {
+	// Leaving cursor mode (back to shooting) closes the MFD, saved or not, so it doesn't reappear the next time
+	// the cursor comes up for another MFD.
+	function Update(deltaTime) {
 		if (ND.psiMfdOpen && !ND.psiMfdPanel) {
 			ND.psiMfdPanel = PsiMfdPanel();
 			ND.g_PlayerCore.InternalMessage("RegisterRootUi", ND.psiMfdPanel);
 		}
-		if (ND.psiMfdOpen && !ND.psiMfdWasOpen)
+		if (ND.psiMfdOpen && !ND.psiMfdWasOpen) {
 			ND.psiMfdPanel.Refresh();
+			ND.psiMfdSeenCursor = false;
+			ND.psiMfdOpenFor = 0.0;
+		}
+		local cursor = ShockGame.MouseCursor();
+		if (ND.psiMfdOpen) {
+			ND.psiMfdOpenFor += deltaTime;
+			if (cursor)
+				ND.psiMfdSeenCursor = true;
+			else if (ND.psiMfdSeenCursor || ND.psiMfdOpenFor > PSI_MFD_CURSOR_WAIT)
+				ND.psiMfdOpen = false;
+		}
 		ND.psiMfdWasOpen = ND.psiMfdOpen;
 		if (ND.psiMfdPanel)
-			ND.psiMfdPanel.SetActive(ND.psiMfdOpen && ShockGame.MouseCursor());
+			ND.psiMfdPanel.SetActive(ND.psiMfdOpen && cursor);
 	}
 }
 
@@ -584,14 +600,9 @@ class PsiMfd extends SqRootScript {
 	function OnTimer() {
 		if (message().name != "Toggle")
 			return;
-		// Open but hidden because the cursor was put away: bring it back rather than closing.
+		ND.psiMfdOpen = !ND.psiMfdOpen;
 		if (ND.psiMfdOpen && !ShockGame.MouseCursor())
 			Debug.Command("toggle_mouse");
-		else {
-			ND.psiMfdOpen = !ND.psiMfdOpen;
-			if (ND.psiMfdOpen && !ShockGame.MouseCursor())
-				Debug.Command("toggle_mouse");
-		}
 		Object.Destroy(self);
 	}
 }

@@ -13,7 +13,9 @@ rem keypad_star, keypad_minus and keypad_del are proven in game; the rest are na
 set "OPEN_CANDIDATES=keypad_star keypad_slash"
 set "MACRO_CANDIDATES=a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 keypad_minus keypad_del keypad_ins keypad_center keypad_slash ins del home end pgup pgdn"
 
-tasklist /fi "imagename eq SystemShock2Remastered.exe" 2>nul | find /i "SystemShock2Remastered.exe" >nul
+rem Windows tools are called so a Unix "find" on the PATH (Git for Windows puts one there) can't take over:
+rem findstr has no Unix namesake, and find.exe is called by its full path.
+tasklist /fi "imagename eq SystemShock2Remastered.exe" 2>nul | findstr /i /c:"SystemShock2Remastered.exe" >nul
 if not errorlevel 1 (
     echo The game is running. Quit it first: it rewrites user.bnd when it exits, which would undo these bindings.
     goto :end
@@ -31,7 +33,7 @@ if not defined BND_DIR (
     )
 )
 if not defined BND_DIR (
-    for /f "tokens=2,*" %%A in ('reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" /v "{4C5C32FF-BB9D-43B0-B5B4-2D72E54EAAA4}" 2^>nul ^| find "REG_"') do (
+    for /f "tokens=2,*" %%A in ('reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" /v "{4C5C32FF-BB9D-43B0-B5B4-2D72E54EAAA4}" 2^>nul ^| findstr /c:"REG_"') do (
         if exist "%%B\%GAME_SUBDIR%\user.bnd" set "BND_DIR=%%B\%GAME_SUBDIR%"
     )
 )
@@ -107,7 +109,7 @@ for %%K in (%MACRO_CANDIDATES%) do (
         echo Macro key: %%K
     )
 )
-for /f %%N in ('find /c /i "user:/psi_macros" ^< "%BND%"') do set HAVE=%%N
+for /f %%N in ('%SystemRoot%\System32\find.exe /c /i "user:/psi_macros" ^< "%BND%"') do set HAVE=%%N
 if !MACROS!==0 (
     echo Macro keys: no new free keys; !HAVE! already set up.
 ) else (
@@ -141,7 +143,7 @@ move /y "%TMP_BND%" "%BND%" >nul || (
 echo.
 echo Done. Backup: user.bnd.before_mfd_%N%
 echo Enable psi_autocast and psi_autocast_mfd for your save, then press the open key with the mouse cursor up.
-echo If a key does nothing, start and quit the game, then check user.bnd: the game drops bindings it doesn't recognise.
+echo If a key does nothing, start and quit the game, then check user.bnd: if its line is gone, the game didn't accept that key.
 goto :end
 
 rem :is_free <key>  sets FREE=1 when user.bnd has no plain binding for <key> and this run hasn't used it.

@@ -19,6 +19,44 @@ ND.psiMfdFinishes <- ["", "last", "weapon:Wrench", "weapon:Pistol", "weapon:Shot
 ND.psiMfdWaits <- [500, 750, 1000, 1500, 2000];
 ND.psiMfdDrawTimes <- [600, 800, 1000, 1200];
 
+// Small text helpers of the MFD's own, so it keeps working (and can say what's missing) without psi_autocast.
+// "a,b, c" -> ["a", "b", "c"], skipping empty entries.
+function PsiMfdSplitList(text) {
+	local items = [];
+	local current = "";
+	foreach (ch in text) {
+		local c = ch.tochar();
+		if (c == "," || c == " " || c == "\t") {
+			if (current.len() > 0)
+				items.push(current);
+			current = "";
+		}
+		else
+			current += c;
+	}
+	if (current.len() > 0)
+		items.push(current);
+	return items;
+}
+
+function PsiMfdIsDigits(text) {
+	if (text.len() == 0)
+		return false;
+	foreach (ch in text) {
+		if (ch < '0' || ch > '9')
+			return false;
+	}
+	return true;
+}
+
+// "Assault_Rifle" -> "Assault Rifle".
+function PsiMfdUnderscoresToSpaces(text) {
+	local result = "";
+	foreach (ch in text)
+		result += ch == '_' ? " " : ch.tochar();
+	return result;
+}
+
 // Global calls run with the caller's "this", so "file" inside a method would find a member of that name
 // first: always call the I/O library as ::file.
 function PsiMfdReadFile(path) {
@@ -147,7 +185,7 @@ class PsiMfdMacro {
 
 	function ParseChain(text) {
 		local wait = PSI_MFD_GAP_MS;
-		foreach (token in PsiSplitList(text)) {
+		foreach (token in PsiMfdSplitList(text)) {
 			local mode = token.slice(-1);
 			if (token == "arm")
 				arm = true;
@@ -157,9 +195,9 @@ class PsiMfdMacro {
 			}
 			else if (token == "last" || startswith(token, "weapon:"))
 				finish = token;
-			else if (token[0] == 'w' && PsiIsDigits(token.slice(1)))
+			else if (token[0] == 'w' && PsiMfdIsDigits(token.slice(1)))
 				wait = token.slice(1).tointeger();
-			else if ((mode == "o" || mode == "q") && PsiIsDigits(token.slice(0, -1))) {
+			else if ((mode == "o" || mode == "q") && PsiMfdIsDigits(token.slice(0, -1))) {
 				steps.push({ kind = "cast", id = token.slice(0, -1).tointeger(), mode = mode, wait = wait });
 				wait = PSI_MFD_GAP_MS;
 			}

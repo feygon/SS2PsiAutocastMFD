@@ -2,6 +2,8 @@
 
 **TLDR:** Press one key and an MFD opens over the game: every discipline with its duration, effect, overload value and cyber module cost, plus an editor that builds [psi_autocast](https://github.com/feygon/SS2PsiAutocast) macros and saves them to keys. Requires psi_autocast 1.2 or later.
 
+**Step-by-step setup for both mods, and a troubleshooting table:** [SETUP_GUIDE.md](https://github.com/feygon/SS2PsiAutocast/blob/main/SETUP_GUIDE.md).
+
 ## What it shows
 
 A scrolling table of all 35 disciplines, each with its icon, tier and name, and:
