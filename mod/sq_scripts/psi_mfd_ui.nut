@@ -609,9 +609,10 @@ class PsiMfd extends SqRootScript {
 	}
 }
 
-// Mouse wheel. Scripts never see the wheel (it's a binding, not a key event), so it's bound once in user.bnd
-// for cursor mode:  game2 bind mouse_wheel_up "summon_obj PsiMfdWheelUp"  (and _down / PsiMfdWheelDown).
-// Over the MFD it scrolls the table; anywhere else it switches weapons, as the plain binding does.
+// Mouse wheel. Scripts never see the wheel (it's a binding, not a key event), so it's bound once in user.bnd:
+//   bind mouse_wheel_up "summon_obj PsiMfdWheelUp"  (and _down / PsiMfdWheelDown).
+// A plain binding, because the game drops added game2 lines when it rewrites user.bnd.
+// Over the open MFD it scrolls the table; anywhere else it switches weapons, as the default binding does.
 class PsiMfdWheel extends SqRootScript {
 	function OnBeginScript() {
 		SetOneShotTimer("Wheel", 0.01);

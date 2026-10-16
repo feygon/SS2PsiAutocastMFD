@@ -6,7 +6,7 @@ rem   - keypad +:      reserved for psi_autocast's cancel key (bind keypad_plus 
 rem A key counts as free when user.bnd has no plain binding for it. Free keys are used without asking.
 rem A bound key is offered (y/n, one at a time) only when the game's defaults don't bind it and its command is also on
 rem another keyboard or mouse binding, so answering y never loses a command. No other binding is ever changed.
-rem The mouse wheel is left alone. Backs up user.bnd before changing it. Run it with the game closed. Running it again adds only what's missing.
+rem The mouse wheel is never a macro key; it asks (y/n) before binding it to scroll the MFD. Backs up user.bnd before changing it. Run it with the game closed. Running it again adds only what's missing.
 setlocal EnableDelayedExpansion
 
 rem Plain single keys only, in order: letters, digits, F-keys, then keypad and navigation keys. Never Enter, Esc, Tab, Space, Backspace, the console key, modifiers,
@@ -133,6 +133,36 @@ for /f "usebackq tokens=1,2,* delims=|" %%A in ("%OFFERS%") do (
 )
 del "%OFFERS%" 2>nul
 
+rem The mouse wheel is never a macro key. It can scroll the MFD: PsiMfdWheel scrolls the table when the mouse is over
+rem the open MFD and sends cycle_weapon itself everywhere else. Offered (y/n) only while both wheel lines are missing
+rem or still the game's defaults; a wheel line with any other command is left alone.
+call :wheel_state mouse_wheel_up 1
+set "WHEEL_UP=!WS!"
+call :wheel_state mouse_wheel_down -1
+set "WHEEL_DOWN=!WS!"
+if "!WHEEL_UP!!WHEEL_DOWN!"=="mfdmfd" (
+    echo Mouse wheel: already scrolls the MFD.
+) else if "!WHEEL_UP!"=="other" (
+    echo Mouse wheel: has your own bindings, left alone.
+) else if "!WHEEL_DOWN!"=="other" (
+    echo Mouse wheel: has your own bindings, left alone.
+) else (
+    echo.
+    echo The mouse wheel can scroll the MFD when the mouse is over it, and still switch weapons everywhere else.
+    echo In a save without psi_autocast_mfd enabled, the wheel then won't switch weapons. To undo, put back:
+    echo   bind mouse_wheel_up "cycle_weapon 1"
+    echo   bind mouse_wheel_down "cycle_weapon -1"
+    set "ANSWER="
+    set /p "ANSWER=Bind the mouse wheel to scroll the MFD? (y/n) "
+    if /i "!ANSWER!"=="y" (
+        >> "%NEW_BND%" echo bind mouse_wheel_up "summon_obj PsiMfdWheelUp"
+        >> "%NEW_BND%" echo bind mouse_wheel_down "summon_obj PsiMfdWheelDown"
+        set "REPLACE_ARGS=!REPLACE_ARGS! /c:"bind mouse_wheel_up " /c:"bind mouse_wheel_down ""
+        set /a ADDED+=1
+        echo Mouse wheel: scrolls the MFD.
+    )
+)
+
 for /f %%N in ('%SystemRoot%\System32\find.exe /c /i "user:/psi_macros" ^< "%BND%"') do set HAVE=%%N
 if !MACROS!==0 (
     echo Macro keys: no new free keys; !HAVE! already set up.
@@ -187,6 +217,16 @@ set FREE=1
 findstr /i /b /c:"bind %~1 " "%BND%" >nul
 if not errorlevel 1 set FREE=0
 if not "!TAKEN: %~1 =!"=="!TAKEN!" set FREE=0
+goto :eof
+
+rem :wheel_state <key> <direction>  sets WS to none, default (cycle_weapon <direction>), mfd (PsiMfdWheel) or other.
+:wheel_state
+set WS=none
+findstr /i /b /c:"bind %~1 " "%BND%" >nul || goto :eof
+set WS=other
+rem Two findstr calls: a quote inside a findstr /c: string can't be escaped reliably from a batch file.
+findstr /i /b /c:"bind %~1 " "%BND%" | findstr /i /c:"cycle_weapon %~2" >nul && set WS=default
+findstr /i /b /c:"bind %~1 " "%BND%" | findstr /i /c:"summon_obj psimfdwheel" >nul && set WS=mfd
 goto :eof
 
 :end

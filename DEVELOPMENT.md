@@ -31,12 +31,13 @@
 
 - **Scripts never see the wheel.** With an overlay handler logging every `HandleKey` while the mouse was over the MFD, wheel turns produced no key events and kept switching weapons (the wheel is a `user.bnd` binding, `bind mouse_wheel_up "cycle_weapon 1"`, not a key event).
 - **`game2 bind` lines apply in cursor mode.** `game2 bind mouse_wheel_up "summon_obj PsiMfdWheelUp"` (and `_down`) made the wheel scroll the MFD while the cursor was up; normal play keeps the plain binding. `PsiMfdWheel` switches weapons itself (`cycle_weapon ±1`) when the mouse isn't over the MFD, so cursor-mode wheel behaviour is otherwise unchanged. Tested 2026-10-16: off the MFD the wheel still switched weapons.
+- **But the game drops them (2026-10-16):** when it next rewrote user.bnd (14:14), it kept its own 14 `game2` lines and every plain binding we added, and dropped both `game2` wheel lines. Until then they had never been rewritten (still in their original mixed case), which is why the first test worked. So `game2` wheel bindings don't persist; the docs no longer suggest them.
+- **Fix: plain bindings (2026-10-16, tested in game).** `bind mouse_wheel_up "summon_obj PsiMfdWheelUp"` / `_down` survive the game's rewrite (it rewrote user.bnd at the 15:21 startup and kept both, lower-cased). Over the open MFD the wheel scrolled the table the expected way; off the MFD and in normal play it switched weapons both ways; condump clean. setupPsiMfd.bat asks y/n while both wheel lines are missing or default. Cost: in a save without this mod the summon has no archetype, so the wheel doesn't switch weapons.
+- **When the game rewrites user.bnd:** at some startups, not all (2026-10-16: 18 s after the 14:14:28 start; earlier startups that day left it alone). It keeps every plain binding and only its own `game2` lines.
 
 ## Overlay numbers for `open_mfd`
 
 `open_mfd <n>` opens an overlay by number (`bind m "open_mfd 26"` is the map). The numbers, printed from the script constants in game (2026-10-16): BuyPsi 38, BuyStats 35, BuyTech 36, BuyWeapon 37, BuyTraits 20, Psi 11, Map 26, Security 33, Elevator 46. The order of the `kOverlay…` names in the exe is not the numbering.
-
-- **But the game drops them (2026-10-16):** when it next rewrote user.bnd (14:14), it kept its own 14 `game2` lines and every plain binding we added, and dropped both `game2` wheel lines. Until then they had never been rewritten (still in their original mixed case), which is why the first test worked. So `game2` wheel bindings don't persist; the docs no longer suggest them. A plain `bind mouse_wheel_up "summon_obj PsiMfdWheelUp"` would persist (PsiMfdWheel sends cycle_weapon itself off the MFD), but it replaces the weapon binding, so it isn't offered.
 
 ## Engine facts learned
 

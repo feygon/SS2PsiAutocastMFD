@@ -22,7 +22,7 @@ The numbers are read from the running game, so they follow SCP if you use it. Cy
 [*]Options: draw the psi amp first, how long to wait for it, and auto psi hypo.[/*]
 [*][b]Save[/b], close the MFD, and press the key. psi_autocast runs the macro.[/*]
 [/list]
-Scroll the table with the Up / Dn buttons, or jump to a tier with T1-T5.
+Scroll the table with the Up / Dn buttons, or jump to a tier with T1-T5. With the optional wheel lines (below), the mouse wheel scrolls it too when the mouse is over the MFD, and still switches weapons everywhere else.
 
 [line]
 [size=4][b]Setup[/b][/size]
@@ -41,7 +41,7 @@ Scroll the table with the Up / Dn buttons, or jump to a tier with T1-T5.
 [*]binds keypad + to psi_autocast's cancel key, if it's free;[/*]
 [*]asks you, one key at a time (y/n), about a key you've already bound only if the game doesn't bind it by default and its command is also on another key, so saying yes never loses a command; it changes no other binding;[/*]
 [*]never uses Enter, Esc, Tab, Space, Backspace, modifier keys or punctuation;[/*]
-[*]leaves the mouse wheel alone;[/*]
+[*]asks (y/n) whether the mouse wheel should scroll the MFD, only while the wheel has the game's default bindings or none;[/*]
 [*]backs up [i]user.bnd[/i] first, lists every key it bound, and adds only what's missing if you run it again.[/*]
 [/list][/spoiler]
 
@@ -53,7 +53,12 @@ One key opens and closes the MFD:
 Each macro key runs its own file. Add one line per key you want, changing the key and the file name together:
 [code]bind keypad_minus "run user:/psi_macros\MacroKPMinus.cmd"
 bind keypad_del "run user:/psi_macros\MacroKPDel.cmd"[/code]
-The MFD finds your macro keys by reading these lines, so every key you add this way appears in its selector. Scripts can't bind keys while the game runs, which is why this step happens once, outside the game.[/spoiler]
+The MFD finds your macro keys by reading these lines, so every key you add this way appears in its selector. Scripts can't bind keys while the game runs, which is why this step happens once, outside the game.
+
+Optional: the mouse wheel scrolls the MFD when the mouse is over it, and switches weapons everywhere else. Replace the two [i]mouse_wheel[/i] lines with:
+[code]bind mouse_wheel_up "summon_obj PsiMfdWheelUp"
+bind mouse_wheel_down "summon_obj PsiMfdWheelDown"[/code]
+In a save without psi_autocast_mfd enabled, the wheel then doesn't switch weapons. To undo, put back [i]bind mouse_wheel_up "cycle_weapon 1"[/i] and [i]bind mouse_wheel_down "cycle_weapon -1"[/i].[/spoiler]
 
 [line]
 [size=4][b]What it writes[/b][/size]

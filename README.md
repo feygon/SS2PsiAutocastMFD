@@ -46,6 +46,15 @@ bind keypad_del "run user:/psi_macros\MacroKPDel.cmd"
 - **The first line** opens and closes the MFD.
 - **Each other line** is a macro key. Add one per key you want, changing the key and the file name together. The MFD finds these lines and offers those keys.
 
+Optional: the mouse wheel scrolls the table when the mouse is over the open MFD, and switches weapons everywhere else. The setup script asks about this (y/n); by hand, replace the two `mouse_wheel` lines with:
+
+```
+bind mouse_wheel_up "summon_obj PsiMfdWheelUp"
+bind mouse_wheel_down "summon_obj PsiMfdWheelDown"
+```
+
+In a save without psi_autocast_mfd enabled, the wheel then doesn't switch weapons. To undo, put back `bind mouse_wheel_up "cycle_weapon 1"` and `bind mouse_wheel_down "cycle_weapon -1"`.
+
 ## What it writes
 
 Each macro is a small text file in `Saved Games\Nightdive Studios\System Shock 2 Remastered\psi_macros\`, one per key, in the format psi_autocast's Macro Builder writes. The MFD reads `user.bnd` and never changes it, and it doesn't touch the game folder.

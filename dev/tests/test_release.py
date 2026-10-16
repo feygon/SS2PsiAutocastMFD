@@ -289,8 +289,12 @@ NEVER = ["enter", "keypad_enter", "esc", "tab", "space", "bs", "backspace", "`",
 
 def run_bat(folder, answers=""):
     """Runs the script against a fixture folder, passed as its argument so it never looks at the real one.
-    answers: one line per y/n question, in order; the final newline answers the closing pause."""
-    return subprocess.run(["cmd", "/c", str(BAT), str(folder)], input=answers + "\n", capture_output=True, text=True).stdout
+    answers: one line per y/n question, in order; the final newline answers the closing pause.
+    Fed from a file: from a pipe, the first set /p swallows the whole buffer and later questions get nothing."""
+    answer_file = folder / "answers.txt"
+    answer_file.write_text(answers + "\n")
+    with answer_file.open() as stdin:
+        return subprocess.run(["cmd", "/c", str(BAT), str(folder)], stdin=stdin, capture_output=True, text=True).stdout
 
 
 def lines(folder):
@@ -414,6 +418,54 @@ def test_bat_y_replaces_the_binding(tmp_path):
     for line in OFFER_FIXTURE:
         if not line.startswith("bind t "):
             assert line in after
+
+
+WHEEL_UP = 'bind mouse_wheel_up "summon_obj PsiMfdWheelUp"'
+WHEEL_DOWN = 'bind mouse_wheel_down "summon_obj PsiMfdWheelDown"'
+
+
+def test_bat_wheel_y_replaces_the_default_wheel_lines(tmp_path):
+    """WHY: The wheel scrolls the MFD only through plain bindings (the game drops added game2 lines); the
+    default weapon-switching lines must be replaced, not duplicated."""
+    (tmp_path / "user.bnd").write_bytes(b'bind mouse_wheel_up "cycle_weapon 1"\r\nbind mouse_wheel_down "cycle_weapon -1"\r\n')
+    out = run_bat(tmp_path, "y\n")
+    wheel = [l for l in lines(tmp_path) if "mouse_wheel" in l]
+    assert wheel == [WHEEL_UP, WHEEL_DOWN]
+    assert "Mouse wheel: scrolls the MFD." in out
+
+
+def test_bat_wheel_y_binds_a_missing_wheel(tmp_path):
+    """WHY: A wheel with no binding at all (the author's wheel-down) gets both lines."""
+    (tmp_path / "user.bnd").write_bytes(b'bind mouse_wheel_up "cycle_weapon 1"\r\n')
+    run_bat(tmp_path, "y\n")
+    assert [l for l in lines(tmp_path) if "mouse_wheel" in l] == [WHEEL_UP, WHEEL_DOWN]
+
+
+def test_bat_wheel_custom_binding_is_left_alone(tmp_path):
+    """WHY: A player's own wheel command would be lost; the script must not even ask."""
+    before = ['bind mouse_wheel_up "zoom_in"', 'bind mouse_wheel_down "cycle_weapon -1"']
+    (tmp_path / "user.bnd").write_bytes(("\r\n".join(before) + "\r\n").encode())
+    out = run_bat(tmp_path, "y\n")
+    assert "Bind the mouse wheel" not in out
+    assert [l for l in lines(tmp_path) if "mouse_wheel" in l] == before
+
+
+def test_bat_wheel_rerun_does_not_ask(tmp_path):
+    """WHY: Once set up, running the script again must not ask about the wheel or change it."""
+    (tmp_path / "user.bnd").write_bytes(b'; empty\r\n')
+    run_bat(tmp_path, "y\n")
+    out = run_bat(tmp_path, "y\n")
+    assert "Bind the mouse wheel" not in out and "already scrolls the MFD" in out
+    assert [l for l in lines(tmp_path) if "mouse_wheel" in l] == [WHEEL_UP, WHEEL_DOWN]
+
+
+def test_bat_each_question_gets_its_own_answer(tmp_path):
+    """WHY: The key offer and the wheel are separate questions; n to the first must not swallow y to the second."""
+    write_fixture(tmp_path)
+    run_bat(tmp_path, "n\ny\n")
+    after = lines(tmp_path)
+    assert 'bind t wpn_setting_toggle' in after
+    assert [l for l in after if "mouse_wheel" in l] == [WHEEL_UP, WHEEL_DOWN]
 
 
 def test_bat_n_keeps_the_binding(tmp_path):

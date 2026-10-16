@@ -25,8 +25,9 @@
 | 7 | Look at tier 1 | Icons, tier, name, short name, duration now / max, effect now / max, overload, Cyber Mods |
 | 8 | T1 to T5 | Each jumps to that tier |
 | 9 | Up and Dn | One row each; stops at the top and bottom |
-| 10 | (removed: the game drops `game2` wheel bindings when it rewrites user.bnd) | |
-| 11 | Mouse wheel with the MFD open | Switches weapons, as normal |
+| 10 | With the wheel lines set up: mouse wheel over the open MFD | Scrolls the table; up scrolls up |
+| 11 | Mouse wheel off the MFD (cursor up), and in normal play | Switches weapons, both directions |
+| 11a | Quit and restart; check user.bnd | Both `mouse_wheel` lines are still there (lower-cased) |
 | 12 | Cyber Mods column | "bought" for owned disciplines; costs include every tier still to unlock |
 | 13 | +Overload | Only on disciplines that benefit from overloading |
 
