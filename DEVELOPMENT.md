@@ -1,0 +1,57 @@
+# Developer notes: psi_autocast_mfd
+
+**TLDR:** An in-game MFD for building psi_autocast macros is feasible. The capability probe (2026-10-16, `dev/sq_scripts/psi_mfd_probe.nut`) showed that a script can draw a clickable panel with a text box, write files into the save folder and its subfolders (through `user:/\sq_cache\`), and that a key file can run those files. A script can't bind keys during play, so keys are bound once to fixed key files (MacroG, MacroJ, …) whose contents the MFD rewrites.
+
+## Probe results (2026-10-16, Epic, game 1.3.4984, psi_autocast 1.2 loaded)
+
+| Test | Result |
+|---|---|
+| `modinfo.json` `"requirements": ["psi_autocast"]` | Accepted without complaint; both mods load. Whether it's enforced is untested |
+| Script writes with `file(path, "w")` | Only `user:/\sq_cache\<name>` (Nightdive's own form in `libs/helpers.nut`) works, and it lands in the save folder root (`%USERPROFILE%\Saved Games\Nightdive Studios\System Shock 2 Remastered\`), not in an `sq_cache` folder. So `sq_cache` appears to be the one writable location, mapped onto that root. Fail with "cannot open file": `user:/<name>`, `psi\…`, `psi/…`, `./psi/…`, a bare name, and (round 2) every form writing into an existing subfolder: `user:/\psi_macros\…`, `user:/psi_macros\…`, `user:/psi_macros/…`, `user:/\psi_macros/…`, `user:psi_macros\…`. Round 3: **subfolders work through `sq_cache`**: `user:/\sq_cache\psi_macros\<name>` and `user:/\sq_cache\psi_macros/<name>` land in `psi_macros`, and `user:/\sq_cache\psi_newdir\<name>` creates the missing folder. `user:/sq_cache/…` (no backslash after `user:/`) and plain `user:/\<name>` fail |
+| Running a file in a save-folder subfolder | Works with `run user:/psi_macros\<name>`, `run user:/psi_macros/<name>` and `run user:psi_macros\<name>`; not with `run user:/\psi_macros\<name>` |
+| Running a save-folder file | `run user:/<name>`, `run user:/\<name>` and `run user:<name>` work. `exec` and absolute paths don't |
+| Binding a key from a script or console | Not possible for gameplay keys. The console's `bind` is the KEX engine's: it rejects Dark key names (`"keypad_plus" isn't a valid key`), accepts KEX names (`kp_plus`, `kp_divide`, `kp_mul`), but a KEX binding doesn't fire; the Dark binding in `user.bnd` keeps running. `bind` lines inside a `run` file fail the same way, silently |
+| Panel drawn on the remaster's UI library | Works: `ND.UiBase` panel with `ND.UiButton` and `ND.UiEditableField`, registered with `ND.g_PlayerCore.InternalMessage("RegisterRootUi", panel)` and shown with `SetActive` |
+| `Debug.Command("toggle_mouse")` | Brings up the mouse cursor |
+| Clicks | Each button click registered |
+| Text box | Click starts editing; Enter returns the typed text (`'bla bla'`) |
+| Keyboard | The panel receives every key while hovered, including console typing; keys aren't swallowed unless a text box is being edited |
+| A save-folder macro using the mod's parts | Works. `run user:/psi_test_parts.cmd` (a copy of `T1_Projected_Cryokinesis_Quickfire.cmd`) ran the nested `run psi\lib\…` parts from the game folder and cast. `run user:/psi_test_chain.cmd` (`arm,6q,w500,last`, `summon_obj PsiChain`) drew the amp from the pistol, cast, and switched back to the pistol |
+
+## MFD test results (2026-10-16, v0.2 dev builds)
+
+- **Layout (final for v0.2):** key selector at the top and bottom, `+Overload` (only for disciplines that benefit) and `+Quick` per row, boxed buttons, panel sized to the window.
+
+- **End to end:** built a macro for Keypad - in the MFD and saved it; it wrote `psi_macros\macrokpminus.cmd` (`arm,4o,w500,5o,w500,6q,w500,6q,w500,6q,w500,weapon:Wrench`), and Keypad - ran all 12 steps.
+- **Reading `user.bnd`** through `user:/\sq_cache\user.bnd` works; the MFD found Keypad - and Keypad Del.
+- **Fixed on the way:** reading with `file(path, "r")` + `readn` tripped a KEX assert (`!file->m_bTextMode`, wrap_fileio.cpp): read with `"rb"`. A class member named `file` hid the global `file()` inside methods (global calls run with the caller's `this`): call `::file`. Bitmaps tiled at a size other than their own (`HRMSUCC`, `HRMRES0`) drew other frames ("SUCCESS!"): rows now draw lines, not bitmaps.
+
+## Mouse wheel (2026-10-16)
+
+- **Scripts never see the wheel.** With an overlay handler logging every `HandleKey` while the mouse was over the MFD, wheel turns produced no key events and kept switching weapons (the wheel is a `user.bnd` binding, `bind mouse_wheel_up "cycle_weapon 1"`, not a key event).
+- **`game2 bind` lines apply in cursor mode.** `game2 bind mouse_wheel_up "summon_obj PsiMfdWheelUp"` (and `_down`) made the wheel scroll the MFD while the cursor was up; normal play keeps the plain binding. `PsiMfdWheel` switches weapons itself (`cycle_weapon ±1`) when the mouse isn't over the MFD, so cursor-mode wheel behaviour is otherwise unchanged. Tested 2026-10-16: off the MFD the wheel still switched weapons.
+
+## Engine facts learned
+
+- **Overlay API:** NewDark's `IShockOverlayHandler` (Squirrel). Nightdive's `libs/player.nut` registers one handler and forwards `DrawHUD`, mouse and key events to `ND.g_PlayerCore`; `libs/ui_handler.nut` draws registered root panels each frame and routes hover, clicks and text input. Our panel plugs into that instead of registering its own handler.
+- **Build UI inside the draw step:** constructing widgets from a timer logged "ShockOverlay::GetStringSize called outside of IShockOverlayHandler::DrawHUD". Create panels from an `OnFrameUpdate` handler (called from `DrawHUD`).
+- **Key names:** `user.bnd` uses Dark names (`keypad_plus`, `keypad_home` for keypad 7, `keypad_up` for 8, `keypad_pgup` for 9). The console uses KEX names (`kp_plus`, `kp_7`).
+- **Free keys on the author's machine** (2026-10-16): only `keypad_star`, `keypad_slash`, `keypad_minus`, `keypad_center`, `keypad_del`, `keypad_ins`. Every letter and F-key is bound.
+
+## Psi power data (for the MFD's cells)
+
+`summon_obj PsiProbeData` (dev probe) reads every discipline from the running gamesys; the raw output from 2026-10-16 (SCP beta 6, PSI 4) is in `dev/data/psi_power_data.txt`.
+
+- **Where it lives:** each discipline is an archetype with a short internal name (`Cryokinesis`, `Quickness` for Psychogenic Agility, `Low Grav` for Psycho-Reflective Screen, …). Its `PsiPower` property has `Power` (the discipline number), `Type`, `Start Cost` and `Data 1`–`Data 4`. Timed disciplines also have `PsiShield`: `Base Time` + `Add Time` seconds per PSI.
+- **Read it at runtime, not from the help text:** `psihelp.str` text can be out of date. Cyber-Affinity's help says "2 minutes + 1 minute per PSI"; the data is 60 s + 30 s per PSI.
+- **Projectile damage:** Cryokinesis and Projected Pyrokinesis fire one projectile archetype per PSI level (`Projectile` links to `Cryo PSI 1` … `Cryo PSI 8`), each with an `arSrcDesc` link whose `Intensity` is the damage: Cryo 3 + PSI (cold), Pyro 5 + 2 × PSI (incendiary). There's no PSI 9 or 10 projectile, so damage stops at PSI 8.
+- **Projectiles whose intensity is a duration:** Hypnogenesis (`StunStim` 20), Electron Suppression (`ElectroDampen` 3) and Imposed Neural Restructuring (`CharmStim` 10) have `Data 1` = 1, and the help text gives "20 / 3 / 10 seconds per PSI".
+- **`psihelp.str`** also has `PsiIcon<n>` (the icon file for discipline n, e.g. `PsiIcon3:"picn04"`), `PsiShort<n>` (a short name) and `Psi<n>` (name, effect, and a stated formula). Read with `Data.GetString("psihelp", key)`.
+- **Overload:** `P$PsiOverDe` / `P$PsiOver2D` are empty in both `shock2.gam` and `shockscp.gam`, so the overload effect is engine code. The MFD shows the overload bonus as the value at PSI + 2, capped at 8 (the cap is verified only for projectile damage).
+- **Still unknown:** the meaning of some data values (Neuro-Reflex Dampening 0.5 / 0.1, Adrenaline 0.13 / 1, Soma Transference 10 / 5 / 5, Neural Decontamination 5); Localized Pyrokinesis and External Psionic Detonation damage (no stim on the power or projectile).
+
+## Design that follows
+
+- **Fixed key files**, shipped in the game's `psi` folder and bound once in `user.bnd` (by a starter script or by hand): `psi\macros\MacroG.cmd` contains `run user:/psi_macros\psi_macro_g.cmd`.
+- **The MFD writes** `psi_macros\psi_macro_<key>.cmd` in the save folder, with `file("user:/\\sq_cache\\psi_macros\\psi_macro_<key>.cmd", "w")` (the folder is created on the first write), read back by `run user:/psi_macros\psi_macro_<key>.cmd`: the same chain lines the Macro Builder produces (`set psi_chain …`, `summon_obj PsiChain`).
+- **Keys pressed before a macro exists** run a missing file; check what `run` does with a missing file (likely a console error, nothing else).

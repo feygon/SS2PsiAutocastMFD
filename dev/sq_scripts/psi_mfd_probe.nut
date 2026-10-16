@@ -1,27 +1,26 @@
 // psi_mfd_probe: developer-only capability probe for psi_autocast_mfd. Not part of release builds.
 //
-// Four tests, each summoned from the console. Results print as "[psi_probe]" lines (console and kexengine.log).
+// Tests, each summoned from the console. Results print as "[psi_probe]" lines (console and kexengine.log).
 //   summon_obj PsiProbeFiles    write a small .cmd file to several candidate paths and read each back
-//   run psi\Probe_Run_All.cmd   try running each written file with run and exec, then print which ran
-//   summon_obj PsiProbeBind     bind keypad 7, 8 and 9 from a script, three different ways
-//   summon_obj PsiProbeUnbind   remove those three test bindings again
 //   summon_obj PsiProbeMfd      open or close a test panel (it brings up the mouse cursor)
+//   summon_obj PsiProbeData     print every discipline's power data, duration and projectile damage
+// Results so far are in DEVELOPMENT.md. Binding keys from a script was tested and isn't possible.
 
 function PsiProbeLog(text) {
 	print("[psi_probe] " + text);
 }
 
 // The game's own helpers (libs/helpers.nut) write with file() under "user:/"; the other paths are guesses.
-// Each written file sets psi_probe_ran_<label>, which PsiProbeReport checks.
+// Each written file sets psi_probe_ran_<label> when run.
+// Round 1 (2026-10-16): only "user:/\\sq_cache\\<name>" could be written, and it landed in the save folder root. Round 2: every form writing into psi_macros (an existing subfolder) failed.
+// Round 3: sq_cache seems to be the one writable location, mapped onto the save folder root, so go through it.
 ND.psiProbeFiles <- [
-	["a1", "user:/psi_probe_a1.cmd"],
-	["a2", "user:/psi_probe_a2.cmd"],
-	["a3", "user:/psi_probe_a3.cmd"],
-	["b1", "user:/\\sq_cache\\psi_probe_b1.cmd"],
-	["c", "psi\\psi_probe_c.cmd"],
-	["d", "psi/psi_probe_d.cmd"],
-	["e", "./psi/psi_probe_e.cmd"],
-	["f", "psi_probe_f.cmd"],
+	["x1", "user:/\\sq_cache\\psi_macros\\psi_probe_x1.cmd"],   // existing subfolder, backslash
+	["x2", "user:/\\sq_cache\\psi_macros/psi_probe_x2.cmd"],    // existing subfolder, forward slash
+	["x3", "user:/\\sq_cache\\psi_newdir\\psi_probe_x3.cmd"],   // subfolder that doesn't exist
+	["x4", "user:/sq_cache/psi_macros/psi_probe_x4.cmd"],       // all forward slashes
+	["x5", "user:/\\psi_probe_x5.cmd"],                         // plain root form, never tried
+	["x6", "user:/\\sq_cache\\psi_probe_x6.cmd"],               // control: the form that worked in round 1
 ];
 
 function PsiProbeWrite(path, text) {
@@ -52,62 +51,7 @@ class PsiProbeFiles extends SqRootScript {
 			local text = "echo psi_probe file " + entry[0] + " ran\nset psi_probe_ran_" + entry[0] + " 1\n";
 			PsiProbeLog("file " + entry[0] + " (" + entry[1] + "): " + PsiProbeWrite(entry[1], text));
 		}
-		PsiProbeLog("files done. Next: run psi\\Probe_Run_All.cmd");
-		Object.Destroy(self);
-	}
-}
-
-class PsiProbeReport extends SqRootScript {
-	function OnBeginScript() {
-		// Commands from the run file are still being applied; give them a moment.
-		SetOneShotTimer("Report", 0.5);
-	}
-
-	function OnTimer() {
-		if (message().name != "Report")
-			return;
-		foreach (entry in ND.psiProbeFiles) {
-			local ran = Engine.ConfigIsDefined("psi_probe_ran_" + entry[0]);
-			PsiProbeLog("RESULT file " + entry[0] + ": " + (ran ? "RAN" : "did not run"));
-		}
-		Object.Destroy(self);
-	}
-}
-
-// Each test binding runs the cancel action, which prints "[psi_autocast] cancel: ..." when pressed.
-class PsiProbeBind extends SqRootScript {
-	function OnBeginScript() {
-		SetOneShotTimer("Bind", 0.01);
-	}
-
-	function OnTimer() {
-		if (message().name != "Bind")
-			return;
-		// 7: one command string with the quoted command inside it.
-		Debug.Command("bind keypad_7 \"run psi\\actions\\Cancel_Macro.cmd\"");
-		// 8: command name and arguments passed separately.
-		Debug.Command("bind", "keypad_8 \"run psi\\actions\\Cancel_Macro.cmd\"");
-		// 9: write the bind line to a file, then run the file (multi-word arguments work in .cmd files).
-		local result = PsiProbeWrite("psi\\psi_probe_bind9.cmd", "bind keypad_9 \"run psi\\actions\\Cancel_Macro.cmd\"\n");
-		PsiProbeLog("bind 9 file: " + result);
-		Debug.Command("run psi\\psi_probe_bind9.cmd");
-		PsiProbeLog("bindings sent. Press keypad 7, 8 and 9: each one that works prints a cancel line.");
-		Object.Destroy(self);
-	}
-}
-
-class PsiProbeUnbind extends SqRootScript {
-	function OnBeginScript() {
-		SetOneShotTimer("Unbind", 0.01);
-	}
-
-	function OnTimer() {
-		if (message().name != "Unbind")
-			return;
-		Debug.Command("unbind keypad_7");
-		Debug.Command("unbind keypad_8");
-		Debug.Command("unbind keypad_9");
-		PsiProbeLog("test bindings removed");
+		PsiProbeLog("files done");
 		Object.Destroy(self);
 	}
 }
@@ -195,11 +139,69 @@ class PsiProbeMfd extends SqRootScript {
 	}
 }
 
+// Psi power data, read from the running gamesys (SCP or not), for the MFD's duration and damage cells.
+// Internal archetype names per discipline number, from P$SymName in shockscp.gam (2026-10-16).
+ND.psiProbePowerObjects <- {
+	[1] = "Low Grav", [2] = "Still Hand", [3] = "PsiPull", [4] = "Quickness", [5] = "Cyber", [6] = "Cryokinesis", [7] = "Codebreaker",
+	[9] = "Stability", [10] = "Berserk", [11] = "Rad Shield", [12] = "PsiHeal", [13] = "Might", [14] = "PsiImage", [15] = "Immolate",
+	[17] = "Fabricate", [18] = "ElectroPsi", [19] = "AntiPsi", [20] = "Toxin Shield", [21] = "Radar", [22] = "Pyrokinesis", [23] = "Terror",
+	[25] = "Inviso", [26] = "Seekersense", [27] = "Electro Dampen", [28] = "Vitality", [29] = "Alchemy", [30] = "CyberHack", [31] = "Psi Sword",
+	[33] = "Major Heal", [34] = "SomaDrain", [35] = "Teleport", [36] = "PsiCharm", [37] = "ForceWall", [38] = "PsiMines", [39] = "PsiShield",
+};
+
+function PsiProbeStims(obj) {
+	local text = "";
+	foreach (l in Link.GetAll("arSrcDesc", obj, 0)) {
+		local link = sLink(l);
+		text += (text.len() ? ", " : "") + Object.GetName(link.dest) + " " + LinkTools.LinkGetData(l, "Intensity");
+	}
+	return text.len() ? text : "none";
+}
+
+class PsiProbeData extends SqRootScript {
+	function OnBeginScript() {
+		SetOneShotTimer("Dump", 0.01);
+	}
+
+	function OnTimer() {
+		if (message().name != "Dump")
+			return;
+		PsiProbeLog("DATA player PSI " + ShockGame.GetStat("Player", eStats.kStatPsi));
+		local ids = [];
+		foreach (id, name in ND.psiProbePowerObjects)
+			ids.push(id);
+		ids.sort();
+		foreach (id in ids) {
+			local name = ND.psiProbePowerObjects[id];
+			local obj = Object.Named(name);
+			if (!obj) {
+				PsiProbeLog("DATA " + id + " " + name + ": NOT FOUND");
+				continue;
+			}
+			local line = "DATA " + id + " " + name + ":";
+			if (Property.Possessed(obj, "PsiPower"))
+				line += " power " + Property.Get(obj, "PsiPower", "Power") + ", type " + Property.Get(obj, "PsiPower", "Type")
+					+ ", cost " + Property.Get(obj, "PsiPower", "Start Cost")
+					+ ", data " + Property.Get(obj, "PsiPower", "Data 1") + " / " + Property.Get(obj, "PsiPower", "Data 2")
+					+ " / " + Property.Get(obj, "PsiPower", "Data 3") + " / " + Property.Get(obj, "PsiPower", "Data 4");
+			if (Property.Possessed(obj, "PsiShield"))
+				line += "; time " + Property.Get(obj, "PsiShield", "Base Time") + " + " + Property.Get(obj, "PsiShield", "Add Time")
+					+ " per PSI, int " + Property.Get(obj, "PsiShield", "Base Int");
+			line += "; own stims " + PsiProbeStims(obj);
+			PsiProbeLog(line);
+			foreach (l in Link.GetAll("Projectile", obj, 0)) {
+				local proj = sLink(l).dest;
+				PsiProbeLog("DATA   " + id + " projectile " + Object.GetName(proj) + ": " + PsiProbeStims(proj));
+			}
+		}
+		PsiProbeLog("DATA done");
+		Object.Destroy(self);
+	}
+}
+
 // Is psi_autocast loaded alongside? (Tests whether modinfo "requirements" matters.)
 PsiProbeLog("loaded; psi_autocast " + (("psiDisciplines" in ND) ? "is" : "is NOT") + " loaded");
 
 ND.Archetype("PsiProbeFiles", "ND", function(){ AddScript("PsiProbeFiles"); });
-ND.Archetype("PsiProbeReport", "ND", function(){ AddScript("PsiProbeReport"); });
-ND.Archetype("PsiProbeBind", "ND", function(){ AddScript("PsiProbeBind"); });
-ND.Archetype("PsiProbeUnbind", "ND", function(){ AddScript("PsiProbeUnbind"); });
+ND.Archetype("PsiProbeData", "ND", function(){ AddScript("PsiProbeData"); });
 ND.Archetype("PsiProbeMfd", "ND", function(){ AddScript("PsiProbeMfd"); });

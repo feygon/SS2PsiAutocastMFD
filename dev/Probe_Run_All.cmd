@@ -1,9 +1,0 @@
-run user:/psi_probe_a1.cmd
-exec psi_probe_a2.cmd
-run psi_probe_a3.cmd
-run user:/sq_cache\psi_probe_b1.cmd
-run psi\psi_probe_c.cmd
-run psi\psi_probe_d.cmd
-run psi\psi_probe_e.cmd
-run psi_probe_f.cmd
-summon_obj PsiProbeReport
