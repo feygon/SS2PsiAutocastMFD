@@ -1,6 +1,10 @@
 // psi_mfd_keyboard: the MFD's keyboard view. Key table, key states and hover text (spec:
 // docs/superpowers/specs/2026-10-16-hotkey-picker-design.md, R6-R16). The widget is PsiMfdKeyboard below.
 
+// The info line above the keys. Its own const: consts are resolved when a file compiles, and this file may
+// compile before psi_mfd_ui.nut (where PSI_MFD_HEADER, also 12, lives).
+const PSI_MFD_KEY_INFO = 12;
+
 // One key: Dark name, label, column and row (0-5) in units, width and height (rows).
 function PsiMfdK(n, l, c, r, w = 1, h = 1) {
 	return { n = n, l = l, c = c, r = r, w = w, h = h };
@@ -183,4 +187,135 @@ function PsiMfdKeyLook(ks) {
 		case "reserved": return { edge = ND.psiMfdSlate, text = ND.psiMfdSlate, double = false };
 	}
 	return { edge = ND.psiMfdFaint, text = ND.psiMfdFaint, double = false };
+}
+
+// The keyboard view, drawn in the panel's table area: a 12-unit info line, then 6 rows of keys (R6).
+class PsiMfdKeyboard extends ND.UiBase {
+	m_panel = null;
+	m_unit = 0;
+	m_rowHeight = 0;
+	m_bindings = null;
+	m_states = null;      // Dark name -> PsiMfdKeyState()
+	m_labels = null;      // per ND.psiMfdKeyboard entry: { text, dx } fitted to the key
+	m_hover = null;       // the key entry under the mouse
+
+	constructor(panel, x, y, width, height, panelWidth) {
+		base.constructor(x, y, width, height);
+		m_panel = panel;
+		m_uiType = "PsiMfdKeyboard";
+		m_unit = ((panelWidth - 36) / 23).tointeger();
+		m_rowHeight = ((height - PSI_MFD_KEY_INFO) / 6).tointeger();
+		m_states = {};
+		m_labels = [];
+		local w = int_ref();
+		local h = int_ref();
+		foreach (k in ND.psiMfdKeyboard) {
+			local r = Rect(k, 0, 0);
+			local text = PsiMfdFit(k.l, r[2] - r[0] - 3);
+			ShockOverlay.GetStringSize(text, w, h);
+			m_labels.push({ text = text, dx = (r[2] - r[0] - w.tointeger()) / 2 });
+		}
+	}
+
+	function SetData(bindings, fileState) {
+		m_bindings = bindings;
+		m_states = {};
+		foreach (k in ND.psiMfdKeyboard) {
+			if (!(k.n in m_states))
+				m_states[k.n] <- PsiMfdKeyState(k.n, bindings, fileState);
+		}
+	}
+
+	// [x0, y0, x1, y1] of a key, from the area's top-left corner (R6 rounding).
+	function Rect(k, left, top) {
+		local x0 = left + (k.c * m_unit).tointeger();
+		local x1 = left + ((k.c + k.w) * m_unit).tointeger() - 2;
+		local y0 = top + PSI_MFD_KEY_INFO + k.r * m_rowHeight;
+		return [x0, y0, x1, y0 + k.h * m_rowHeight - 2];
+	}
+
+	function KeyAt(left, top) {
+		local mouse = ND.g_PlayerCore.m_mouse;
+		foreach (k in ND.psiMfdKeyboard) {
+			local r = Rect(k, left, top);
+			if (mouse.x >= r[0] && mouse.x <= r[2] && mouse.y >= r[1] && mouse.y <= r[3])
+				return k;
+		}
+		return null;
+	}
+
+	function DrawAt(x, y) {
+		if (!m_active)
+			return null;
+		try {
+			local hovered = base.DrawAt(x, y);
+			local left = x + m_x;
+			local top = y + m_y;
+			m_hover = m_hovered ? KeyAt(left, top) : null;
+			DrawInfo(left, top);
+			local selected = m_panel.SelectedKeyName();
+			foreach (i, k in ND.psiMfdKeyboard)
+				DrawKey(k, m_labels[i], Rect(k, left, top), k == m_hover, k.n == selected);
+			return hovered;
+		}
+		catch (e) {
+			PsiMfdFail("keyboard draw", e);
+			return null;
+		}
+	}
+
+	function DrawInfo(left, top) {
+		local text;
+		try {
+			if (m_hover)
+				text = PsiMfdKeyHover(m_hover.n, m_states[m_hover.n], m_bindings);
+			else if (m_bindings == null)
+				text = "Can't read user.bnd: keys can't be shown";
+			else
+				text = "Bright: macro  Dim: free  Grey: game  Slate: mod  = elsewhere  ! conflict  ? empty";
+		}
+		catch (e) {
+			PsiMfdFail("keyboard hover", e);
+			return;
+		}
+		PsiMfdColor(ND.psiMfdText);
+		ShockOverlay.DrawString(PsiMfdFit(text, m_width - 4), left, top);
+	}
+
+	function DrawKey(k, label, r, over, selected) {
+		local s = m_states[k.n];
+		local look = PsiMfdKeyLook(s);
+		local edge = over && s.selectable ? ND.psiMfdBright : look.edge;
+		ND.DrawBox(r[0], r[1], r[2], r[3], edge[0], edge[1], edge[2]);
+		if (look.double)
+			ND.DrawBox(r[0] + 1, r[1] + 1, r[2] - 1, r[3] - 1, edge[0], edge[1], edge[2]);
+		if (selected) {
+			local b = ND.psiMfdBright;
+			ND.DrawBox(r[0] - 1, r[1] - 1, r[2] + 1, r[3] + 1, b[0], b[1], b[2]);
+		}
+		PsiMfdColor(look.text);
+		ShockOverlay.DrawString(label.text, r[0] + label.dx, r[1] + (r[3] - r[1] - 9) / 2);
+		if (s.marks.find("=") != null) {
+			PsiMfdColor(ND.psiMfdText);
+			ShockOverlay.DrawString("=", r[2] - 6, r[1]);
+		}
+		if (s.marks.find("!") != null) {
+			PsiMfdColor(ND.psiMfdRed);
+			ShockOverlay.DrawString("!", r[0] + 2, r[1]);
+		}
+		else if (s.marks.find("?") != null) {
+			PsiMfdColor(ND.psiMfdText);
+			ShockOverlay.DrawString("?", r[0] + 2, r[1]);
+		}
+	}
+
+	function OnLeftClick(message) {
+		try {
+			if (m_hover && m_states[m_hover.n].selectable)
+				m_panel.PickKey(m_hover.n, m_states[m_hover.n]);
+		}
+		catch (e) {
+			PsiMfdFail("keyboard click", e);
+		}
+	}
 }

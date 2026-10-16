@@ -236,3 +236,17 @@ def test_twin_lists_come_from_the_nut_file():
     macros = (SCRIPTS / "psi_mfd_macros.nut").read_text(encoding="utf-8")
     for name in ["PsiMfdBindings", "PsiMfdMacroFile", "PsiMfdMacroFileState", "PsiMfdMacroKeys"]:
         assert f"function {name}(" in macros, name
+
+
+def test_consts_come_from_the_same_or_an_earlier_file():
+    """WHY: Squirrel resolves const names when a file compiles; a const from a file that compiles later is
+    looked up at runtime, isn't found, and the error stops the MFD. Files are assumed to compile by name."""
+    defined = {}
+    for path in sorted(SCRIPTS.glob("*.nut")):
+        code = re.sub(r"//[^\n]*", "", path.read_text(encoding="utf-8"))
+        own = set(re.findall(r"^const (PSI_MFD_\w+)", code, re.M))
+        visible = own | {c for c, f in defined.items()}
+        for used in set(re.findall(r"\bPSI_MFD_\w+", code)):
+            assert used in visible, f"{path.name} uses {used}, defined in a later file or nowhere"
+        for c in own:
+            defined[c] = path.name

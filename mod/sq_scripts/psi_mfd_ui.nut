@@ -11,6 +11,7 @@ const PSI_MFD_TOP_BAR = 18;
 const PSI_MFD_HEADER = 12;
 const PSI_MFD_EDITOR = 52;       // macro label and two lines of steps
 const PSI_MFD_CONTROLS = 32;     // two lines of buttons
+const PSI_MFD_EDIT_HINT = "Macro: click a step to remove it, a wait to change it";
 
 // Text colours, 0-1, matching the game's teal MFDs.
 ND.psiMfdBright <- [0.6, 1.0, 0.85];
@@ -169,6 +170,18 @@ class PsiMfdKeySelector extends ND.UiBase {
 		ShockOverlay.DrawString(text, left + (PSI_MFD_KEY_BOX - w.tointeger()) / 2, top + 2);
 		return hovered;
 	}
+
+	// Clicking the name box (not the < > buttons) opens or closes the keyboard (R1).
+	function OnLeftClick(message) {
+		try {
+			local mouseX = ND.g_PlayerCore.m_mouse.x;
+			if (mouseX >= m_screenX + 14 && mouseX <= m_screenX + 14 + PSI_MFD_KEY_BOX)
+				m_panel.ToggleKeyboard(null);
+		}
+		catch (e) {
+			PsiMfdFail("key box click", e);
+		}
+	}
 }
 
 // One table row. The panel sets m_row to the discipline it shows (it changes as the table scrolls).
@@ -246,6 +259,11 @@ class PsiMfdPanel extends ND.UiBase {
 	m_status = null;
 	m_placeX = 0;
 	m_placeY = 0;
+	m_keyboard = null;
+	m_keyboardShown = false;
+	m_tableWidgets = null;  // header labels, rows, Up, Dn: hidden while the keyboard shows
+	m_tableHeight = 0;
+	m_editLabel = null;
 
 	// Sized to the window: between the inventory bar and the bottom HUD, centred between the side MFDs.
 	constructor() {
@@ -269,6 +287,7 @@ class PsiMfdPanel extends ND.UiBase {
 		AddChild(PsiMfdLabel(6, 4, "PSI MACROS", ND.psiMfdBright));
 		AddChild(PsiMfdLabel(80, 4, "Macro key:", ND.psiMfdText));
 		AddChild(PsiMfdKeySelector(this, 130, 2));
+		AddChild(PsiMfdButton("", 260, 4, this, "ToggleKeyboard", null, @() m_keyboardShown ? "Table" : "Keys"));
 		for (local tier = 1; tier <= 5; tier++)
 			AddChild(PsiMfdButton("T" + tier, width - 200 + tier * 24, 4, this, "ScrollToTier", tier));
 		AddChild(PsiMfdButton("Close", width - 40, 4, this, "Close"));
@@ -276,11 +295,11 @@ class PsiMfdPanel extends ND.UiBase {
 		// Column headings
 		local c = ND.psiMfdColumns;
 		local headY = PSI_MFD_TOP_BAR + 1;
-		AddChild(PsiMfdLabel(6 + c.name, headY, "Discipline", ND.psiMfdDim));
-		AddChild(PsiMfdLabel(6 + c.time, headY, "Duration", ND.psiMfdDim));
-		AddChild(PsiMfdLabel(6 + c.effect, headY, "Effect", ND.psiMfdDim));
-		AddChild(PsiMfdLabel(6 + c.overload, headY, "Overload", ND.psiMfdDim));
-		AddChild(PsiMfdLabel(6 + c.cost, headY, "Cyber Mods", ND.psiMfdDim));
+		m_tableWidgets = [];
+		foreach (heading in [[c.name, "Discipline"], [c.time, "Duration"], [c.effect, "Effect"], [c.overload, "Overload"], [c.cost, "Cyber Mods"]])
+			m_tableWidgets.push(PsiMfdLabel(6 + heading[0], headY, heading[1], ND.psiMfdDim));
+		foreach (widget in m_tableWidgets)
+			AddChild(widget);
 
 		// Table
 		local tableY = PSI_MFD_TOP_BAR + PSI_MFD_HEADER + 2;
@@ -288,14 +307,24 @@ class PsiMfdPanel extends ND.UiBase {
 		for (local i = 0; i < m_visibleRows; i++) {
 			local row = PsiMfdRow(this, tableY + i * PSI_MFD_ROW_HEIGHT, width - 36);
 			m_rowUis.push(row);
+			m_tableWidgets.push(row);
 			AddChild(row);
 		}
-		AddChild(PsiMfdButton("Up", width - 26, tableY, this, "Scroll", -1));
-		AddChild(PsiMfdButton("Dn", width - 26, tableY + m_visibleRows * PSI_MFD_ROW_HEIGHT - 12, this, "Scroll", 1));
+		local up = PsiMfdButton("Up", width - 26, tableY, this, "Scroll", -1);
+		local down = PsiMfdButton("Dn", width - 26, tableY + m_visibleRows * PSI_MFD_ROW_HEIGHT - 12, this, "Scroll", 1);
+		m_tableWidgets.push(up);
+		m_tableWidgets.push(down);
+		AddChild(up);
+		AddChild(down);
+
+		// Keyboard view (R2, R6): same place as the table, hidden until Keys is clicked.
+		m_tableHeight = PSI_MFD_HEADER + 2 + m_visibleRows * PSI_MFD_ROW_HEIGHT;
+		AddChild(m_keyboard = PsiMfdKeyboard(this, 6, PSI_MFD_TOP_BAR, width - 12, m_tableHeight, width));
+		m_keyboard.SetActive(false);
 
 		// Macro editor
 		local editY = tableY + m_visibleRows * PSI_MFD_ROW_HEIGHT + 4;
-		AddChild(PsiMfdLabel(6, editY, "Macro: click a step to remove it, a wait to change it", ND.psiMfdDim));
+		AddChild(m_editLabel = PsiMfdLabel(6, editY, PSI_MFD_EDIT_HINT, ND.psiMfdDim));
 		AddChild(m_steps = ND.UiBase(6, editY + 12, width - 12, 36));
 
 		// Controls
@@ -358,10 +387,11 @@ class PsiMfdPanel extends ND.UiBase {
 		m_macros = {};
 		if (m_keyIndex >= m_keys.len())
 			m_keyIndex = 0;
+		ShowKeyboard(false);
 		LoadMacro();
 		Scroll(0);
 		if (!m_keys.len())
-			SetStatus("No macro keys bound: see the readme");
+			SetEditLabel("No macro keys bound: click Keys to pick one");
 		if (!("psiDisciplines" in ND))
 			SetStatus("psi_autocast isn't loaded: macros won't run");
 	}
@@ -383,15 +413,17 @@ class PsiMfdPanel extends ND.UiBase {
 	// Shows the selected key's macro, reading it from disk the first time it's shown after opening.
 	function LoadMacro() {
 		m_macro = null;
+		SetEditLabel(PSI_MFD_EDIT_HINT);
 		if (m_keys.len()) {
 			local key = m_keys[m_keyIndex];
-			if (key.key in m_macros) {
-				m_macro = m_macros[key.key];
+			local id = key.file.tolower();
+			if (id in m_macros) {
+				m_macro = m_macros[id];
 				SetStatus(m_macro.dirty ? "Not saved yet" : "");
 			}
 			else {
 				m_macro = PsiMfdMacro(key.key, key.file);
-				m_macros[key.key] <- m_macro;
+				m_macros[id] <- m_macro;
 				SetStatus(m_macro.Load() ? "Loaded" : "New macro");
 			}
 		}
@@ -413,6 +445,8 @@ class PsiMfdPanel extends ND.UiBase {
 	}
 
 	function Scroll(delta) {
+		if (m_keyboardShown && delta != 0)
+			return;
 		local last = m_rows.len() - m_visibleRows;
 		local next = m_scroll + delta;
 		m_scroll = next < 0 ? 0 : (next > last ? last : next);
@@ -421,6 +455,7 @@ class PsiMfdPanel extends ND.UiBase {
 	}
 
 	function ScrollToTier(tier) {
+		ShowKeyboard(false);
 		m_scroll = (tier - 1) * 7;
 		Scroll(0);
 	}
@@ -500,7 +535,79 @@ class PsiMfdPanel extends ND.UiBase {
 		if (!Editable())
 			return;
 		local problem = m_macro.Save();
-		SetStatus(problem ? problem : "Saved for " + PsiMfdKeyName(m_macro.key));
+		if (problem) {
+			SetStatus(problem);
+			return;
+		}
+		local entry = m_keys[m_keyIndex];
+		local name = PsiMfdKeyName(entry.key);
+		SetStatus("Saved for " + name);
+		local state = "state" in entry ? entry.state : "macro";
+		if (state == "free")
+			SetEditLabel(name + " isn't bound yet: quit and run setupPsiMfd.bat.");
+		else if (state == "game")
+			SetEditLabel(name + " is a game key: clear it in Options > Controls, quit, run setupPsiMfd.bat.");
+	}
+
+	function SelectedKeyName() {
+		return m_keys && m_keys.len() ? m_keys[m_keyIndex].key : null;
+	}
+
+	function SetEditLabel(text) {
+		m_editLabel.Set(PsiMfdFit(text, m_width - 12), ND.psiMfdDim[0], ND.psiMfdDim[1], ND.psiMfdDim[2]);
+	}
+
+	function ShowKeyboard(show) {
+		m_keyboardShown = show;
+		foreach (widget in m_tableWidgets)
+			widget.SetActive(!show);
+		m_keyboard.SetActive(show);
+	}
+
+	// lower-case file name -> "has" / "empty" / "missing", for every file a keyboard key can show (R12, R13).
+	function BuildFileState() {
+		local files = {};
+		if (m_bindings) {
+			foreach (k in ND.psiMfdKeyboard) {
+				local file = PsiMfdKeyState(k.n, m_bindings, {}).contentFile;
+				if (file)
+					files[file.tolower()] <- file;
+			}
+		}
+		local state = {};
+		foreach (lower, file in files)
+			state[lower] <- PsiMfdMacroFileState(file);
+		return state;
+	}
+
+	function ToggleKeyboard(unused) {
+		if (m_keyboardShown) {
+			ShowKeyboard(false);
+			return;
+		}
+		if (m_tableHeight < PSI_MFD_HEADER + 6 * 14) {
+			SetEditLabel("Window too small for the keyboard");
+			return;
+		}
+		m_bindings = PsiMfdBindings();
+		m_keyboard.SetData(m_bindings, BuildFileState());
+		ShowKeyboard(true);
+	}
+
+	// R17: select a key picked on the keyboard, adding a free or game key to the selector's list once.
+	function PickKey(name, keyState) {
+		local index = null;
+		foreach (i, entry in m_keys) {
+			if (entry.key == name)
+				index = i;
+		}
+		if (index == null) {
+			m_keys.push({ key = name, file = keyState.file, state = keyState.state });
+			index = m_keys.len() - 1;
+		}
+		m_keyIndex = index;
+		ShowKeyboard(false);
+		LoadMacro();
 	}
 
 	function Changed() {
