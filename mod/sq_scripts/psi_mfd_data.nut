@@ -10,6 +10,12 @@ ND.psiMfdPowers <- {
 	[33] = "Major Heal", [34] = "SomaDrain", [35] = "Teleport", [36] = "PsiCharm", [37] = "ForceWall", [38] = "PsiMines", [39] = "PsiShield",
 };
 
+// Disciplines that benefit from an overload: the wiki's "Powers affected by overloading" table, the same flags
+// psi_autocast uses (a test keeps the two in step). The MFD keeps its own copy so the Overload column is right
+// whether or not psi_autocast is loaded; psi_autocast still makes the cast-time decision itself.
+ND.psiMfdBenefits <- { [3] = true, [6] = true, [7] = true, [12] = true, [17] = true, [18] = true, [22] = true,
+	[23] = true, [27] = true, [29] = true, [30] = true, [33] = true, [34] = true, [36] = true, [37] = true };
+
 const PSI_MFD_MAX_PSI = 8;     // highest PSI; Cryo and Pyro have no projectile past PSI 8
 const PSI_MFD_OVERLOAD_PSI = 2; // an overload casts as if PSI were 2 higher
 
@@ -194,7 +200,7 @@ function PsiMfdBuildRows() {
 	local rows = [];
 	foreach (id in ids) {
 		local obj = Object.Named(ND.psiMfdPowers[id]);
-		local benefits = ("psiDisciplines" in ND) && (id in ND.psiDisciplines) && ND.psiDisciplines[id].benefits == 1;
+		local benefits = id in ND.psiMfdBenefits;
 		local row = {
 			id = id,
 			tier = id / 8 + 1,

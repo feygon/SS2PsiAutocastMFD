@@ -360,6 +360,8 @@ class PsiMfdPanel extends ND.UiBase {
 		Scroll(0);
 		if (!m_keys.len())
 			SetStatus("No macro keys bound: see the readme");
+		if (!("psiDisciplines" in ND))
+			SetStatus("psi_autocast isn't loaded: macros won't run");
 	}
 
 	function SetStatus(text) {

@@ -259,6 +259,20 @@ def test_chain_steps_are_ones_psi_autocast_understands():
 
 
 @needs_main
+def test_overload_flags_match_psi_autocast():
+    """
+    WHY: The MFD's Overload column and +Overload buttons use its own copy of the flags, so they show without
+    psi_autocast; psi_autocast decides at cast time from its copy. If the two drift, the MFD shows one thing
+    and the cast does another.
+    """
+    data = (MAIN / "mod" / "sq_scripts" / "psi_autocast_disciplines.nut").read_text()
+    autocast = {int(i) for i, b in re.findall(r'ND\.psiDisciplines\[(\d+)\] <- \{ name = "[^"]+", benefits = (\d) \}', data) if b == "1"}
+    block = nut("psi_mfd_data.nut").split("ND.psiMfdBenefits <- {")[1].split("};")[0]
+    mfd = {int(i) for i in re.findall(r"\[(\d+)\] = true", block)}
+    assert mfd == autocast
+
+
+@needs_main
 def test_disciplines_match_psi_autocast():
     """WHY: The MFD's discipline numbers must be psi_autocast's; a mismatch casts the wrong discipline."""
     data = (MAIN / "mod" / "sq_scripts" / "psi_autocast_disciplines.nut").read_text()

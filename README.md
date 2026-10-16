@@ -22,7 +22,7 @@ The numbers are read from the running game, so they follow SCP if you use it.
 3. Add psi hypos, click a wait to change it, and choose a **Finish** weapon switch.
 4. **Save**, close the MFD, and press the key.
 
-The mouse wheel scrolls the table when the cursor is over the MFD (with the optional wheel lines below). T1–T5 jump to a tier.
+T1–T5 jump to a tier.
 
 ## Install
 
@@ -45,13 +45,6 @@ bind keypad_del "run user:/psi_macros\MacroKPDel.cmd"
 
 - **The first line** opens and closes the MFD.
 - **Each other line** is a macro key. Add one per key you want, changing the key and the file name together. The MFD finds these lines and offers those keys.
-
-Optional, for the mouse wheel in cursor mode (it still switches weapons away from the MFD):
-
-```
-game2 bind mouse_wheel_up "summon_obj PsiMfdWheelUp"
-game2 bind mouse_wheel_down "summon_obj PsiMfdWheelDown"
-```
 
 ## What it writes
 

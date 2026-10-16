@@ -4,7 +4,7 @@
 
 ## Setup
 
-- Bindings in `user.bnd`: an open key (keypad *), at least two macro keys, keypad + as cancel, and the two optional `game2` wheel lines.
+- Bindings in `user.bnd`: an open key (keypad *), at least two macro keys, keypad + as cancel.
 - Have Projected Cryokinesis learned, a few psi points, and at least one psi hypo.
 
 ## Opening and closing
@@ -25,8 +25,8 @@
 | 7 | Look at tier 1 | Icons, tier, name, short name, duration now / max, effect now / max, overload, Cyber Mods |
 | 8 | T1 to T5 | Each jumps to that tier |
 | 9 | Up and Dn | One row each; stops at the top and bottom |
-| 10 | Mouse wheel over the MFD | Scrolls the table; doesn't switch weapons |
-| 11 | Mouse wheel away from the MFD, cursor up | Switches weapons |
+| 10 | (removed: the game drops `game2` wheel bindings when it rewrites user.bnd) | |
+| 11 | Mouse wheel with the MFD open | Switches weapons, as normal |
 | 12 | Cyber Mods column | "bought" for owned disciplines; costs include every tier still to unlock |
 | 13 | +Overload | Only on disciplines that benefit from overloading |
 

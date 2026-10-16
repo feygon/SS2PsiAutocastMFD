@@ -22,7 +22,7 @@ The numbers are read from the running game, so they follow SCP if you use it. Cy
 [*]Options: draw the psi amp first, how long to wait for it, and auto psi hypo.[/*]
 [*][b]Save[/b], close the MFD, and press the key. psi_autocast runs the macro.[/*]
 [/list]
-Scroll the table with the Up / Dn buttons, or jump to a tier with T1-T5. With the optional wheel lines (below), the mouse wheel scrolls it too when the cursor is over the MFD, and still switches weapons everywhere else.
+Scroll the table with the Up / Dn buttons, or jump to a tier with T1-T5.
 
 [line]
 [size=4][b]Setup[/b][/size]
@@ -52,9 +52,6 @@ One key opens and closes the MFD:
 Each macro key runs its own file. Add one line per key you want, changing the key and the file name together:
 [code]bind keypad_minus "run user:/psi_macros\MacroKPMinus.cmd"
 bind keypad_del "run user:/psi_macros\MacroKPDel.cmd"[/code]
-Optional: the mouse wheel scrolls the MFD in cursor mode, and still switches weapons everywhere else:
-[code]game2 bind mouse_wheel_up "summon_obj PsiMfdWheelUp"
-game2 bind mouse_wheel_down "summon_obj PsiMfdWheelDown"[/code]
 The MFD finds your macro keys by reading these lines, so every key you add this way appears in its selector. Scripts can't bind keys while the game runs, which is why this step happens once, outside the game.[/spoiler]
 
 [line]

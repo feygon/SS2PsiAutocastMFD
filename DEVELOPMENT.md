@@ -36,6 +36,8 @@
 
 `open_mfd <n>` opens an overlay by number (`bind m "open_mfd 26"` is the map). The numbers, printed from the script constants in game (2026-10-16): BuyPsi 38, BuyStats 35, BuyTech 36, BuyWeapon 37, BuyTraits 20, Psi 11, Map 26, Security 33, Elevator 46. The order of the `kOverlay…` names in the exe is not the numbering.
 
+- **But the game drops them (2026-10-16):** when it next rewrote user.bnd (14:14), it kept its own 14 `game2` lines and every plain binding we added, and dropped both `game2` wheel lines. Until then they had never been rewritten (still in their original mixed case), which is why the first test worked. So `game2` wheel bindings don't persist; the docs no longer suggest them. A plain `bind mouse_wheel_up "summon_obj PsiMfdWheelUp"` would persist (PsiMfdWheel sends cycle_weapon itself off the MFD), but it replaces the weapon binding, so it isn't offered.
+
 ## Engine facts learned
 
 - **Overlay API:** NewDark's `IShockOverlayHandler` (Squirrel). Nightdive's `libs/player.nut` registers one handler and forwards `DrawHUD`, mouse and key events to `ND.g_PlayerCore`; `libs/ui_handler.nut` draws registered root panels each frame and routes hover, clicks and text input. Our panel plugs into that instead of registering its own handler.
