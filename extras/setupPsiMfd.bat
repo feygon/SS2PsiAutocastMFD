@@ -3,7 +3,9 @@ rem setupPsiMfd.bat: sets up the psi_autocast_mfd keys in the Remaster's user.bn
 rem   - an open key:   bind <key> "summon_obj PsiMfd"
 rem   - macro keys:    bind <key> "run user:/psi_macros\Macro_<key>.cmd"   (every free key in the list below)
 rem   - keypad +:      reserved for psi_autocast's cancel key (bind keypad_plus "run psi\actions\Cancel_Macro.cmd")
-rem A key counts as free when user.bnd has no plain binding for it; existing bindings are never changed.
+rem A key counts as free when user.bnd has no plain binding for it. Free keys are used without asking.
+rem A bound key is offered (y/n, one at a time) only when the game's defaults don't bind it and its command is also on
+rem another keyboard or mouse binding, so answering y never loses a command. No other binding is ever changed.
 rem The mouse wheel is left alone. Backs up user.bnd before changing it. Run it with the game closed. Running it again adds only what's missing.
 setlocal EnableDelayedExpansion
 
@@ -12,6 +14,8 @@ rem Print Screen, Scroll Lock or Pause. Punctuation is left out: , ; = split a b
 rem keypad_star, keypad_minus and keypad_del are proven in game; the rest are names from the game's key table.
 set "OPEN_CANDIDATES=keypad_star keypad_slash"
 set "MACRO_CANDIDATES=a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 keypad_minus keypad_del keypad_ins keypad_center keypad_slash ins del home end pgup pgdn"
+rem Every plain keyboard and mouse key the game binds by default (base.kpf, defaults\shock.bnd, game 1.3.4984). These are never offered for replacing.
+set "DEFAULT_KEYS=' - 0 1 2 3 4 5 6 7 8 9 = \ ` a alt b backspace c ctrl d del down e esc f f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 h keypad_center keypad_down keypad_end keypad_home keypad_left keypad_pgdn keypad_pgup keypad_right keypad_up l left m mouse1 mouse2 mouse3 mouse_axisx mouse_axisy mouse_wheel_down mouse_wheel_up n o p pgdn pgup q r right s shift space tab u up w z"
 
 rem Windows tools are called so a Unix "find" on the PATH (Git for Windows puts one there) can't take over:
 rem findstr has no Unix namesake, and find.exe is called by its full path.
@@ -54,10 +58,12 @@ set "BND=%BND_DIR%\user.bnd"
 echo Using %BND%
 
 set "TMP_BND=%BND%.mfd_tmp"
-rem Redirected input makes findstr end the last line with a newline even when the file doesn't.
-findstr "^" < "%BND%" > "%TMP_BND%"
+set "NEW_BND=%BND%.mfd_new"
+set "OFFERS=%BND%.mfd_offers"
+type nul > "%NEW_BND%"
 set ADDED=0
 set "TAKEN= "
+set "REPLACE_ARGS="
 
 rem The open key: skip if one is already bound (the wheel lines also mention PsiMfd, so they're filtered out).
 findstr /i /c:"summon_obj psimfd" "%BND%" | findstr /i /v /c:"psimfdwheel" >nul
@@ -72,7 +78,7 @@ if not errorlevel 1 (
         )
     )
     if defined OPEN_KEY (
-        >> "%TMP_BND%" echo bind !OPEN_KEY! "summon_obj PsiMfd"
+        >> "%NEW_BND%" echo bind !OPEN_KEY! "summon_obj PsiMfd"
         set "TAKEN=!TAKEN!!OPEN_KEY! "
         set /a ADDED+=1
         echo Open key: !OPEN_KEY!
@@ -84,7 +90,7 @@ if not errorlevel 1 (
 rem Keypad + is psi_autocast's cancel key: bind it if it's free, never use it for anything else.
 findstr /i /b /c:"bind keypad_plus " "%BND%" >nul
 if errorlevel 1 (
-    >> "%TMP_BND%" echo bind keypad_plus "run psi\actions\Cancel_Macro.cmd"
+    >> "%NEW_BND%" echo bind keypad_plus "run psi\actions\Cancel_Macro.cmd"
     set /a ADDED+=1
     echo Cancel key: keypad_plus
 ) else (
@@ -102,13 +108,31 @@ set MACROS=0
 for %%K in (%MACRO_CANDIDATES%) do (
     call :is_free %%K
     if "!FREE!"=="1" (
-        >> "%TMP_BND%" echo bind %%K "run user:/psi_macros\Macro_%%K.cmd"
+        >> "%NEW_BND%" echo bind %%K "run user:/psi_macros\Macro_%%K.cmd"
         set "TAKEN=!TAKEN!%%K "
         set /a MACROS+=1
         set /a ADDED+=1
         echo Macro key: %%K
     )
 )
+
+rem Bound keys that can be given up without losing a command: not bound by the game's defaults, not one of these mods'
+rem keys, and the same command is on another keyboard or mouse binding (gamepad bindings don't count; neither do other
+rem offered keys, so saying y to all of them still leaves every command on a key). Output: key|command|other keys.
+powershell -NoProfile -Command "$cand=$env:MACRO_CANDIDATES -split ' '; $def=$env:DEFAULT_KEYS -split ' '; $b=@{}; foreach($l in Get-Content -LiteralPath $env:BND){ $p=$l.Trim() -split '\s+',3; if($p.Count -eq 3 -and $p[0] -eq 'bind'){ $b[$p[1]]=$p[2].Trim() } }; $offer=@($cand | Where-Object { $b.ContainsKey($_) -and $def -notcontains $_ -and $b[$_] -notmatch 'psi_macros|summon_obj psimfd|cancel_macro' }); foreach($k in $offer){ $o=@($b.Keys | Where-Object { $_ -ne $k -and $_ -notlike 'joy*' -and $offer -notcontains $_ -and $b[$_] -eq $b[$k] } | Sort-Object); if($o.Count){ $k+'|'+$b[$k]+'|'+($o -join ' ') } }" > "%OFFERS%" 2>nul
+for /f "usebackq tokens=1,2,* delims=|" %%A in ("%OFFERS%") do (
+    set "ANSWER="
+    set /p "ANSWER=Use %%A as a macro key? It runs %%B, which is also on %%C. (y/n) "
+    if /i "!ANSWER!"=="y" (
+        >> "%NEW_BND%" echo bind %%A "run user:/psi_macros\Macro_%%A.cmd"
+        set "REPLACE_ARGS=!REPLACE_ARGS! /c:"bind %%A ""
+        set /a MACROS+=1
+        set /a ADDED+=1
+        echo Macro key: %%A ^(replaces %%B^)
+    )
+)
+del "%OFFERS%" 2>nul
+
 for /f %%N in ('%SystemRoot%\System32\find.exe /c /i "user:/psi_macros" ^< "%BND%"') do set HAVE=%%N
 if !MACROS!==0 (
     echo Macro keys: no new free keys; !HAVE! already set up.
@@ -117,11 +141,22 @@ if !MACROS!==0 (
 )
 
 if !ADDED!==0 (
-    del "%TMP_BND%"
+    del "%NEW_BND%"
     echo.
     echo Nothing to add. user.bnd is unchanged.
     goto :end
 )
+
+rem The new user.bnd: the old lines without the bindings of keys being replaced, then the new lines.
+rem Redirected input makes findstr end the last line with a newline even when the file doesn't.
+rem (/i also avoids findstr's bug with several case-sensitive search strings of different lengths.)
+if defined REPLACE_ARGS (
+    findstr /i /v /b %REPLACE_ARGS% < "%BND%" > "%TMP_BND%"
+) else (
+    findstr "^" < "%BND%" > "%TMP_BND%"
+)
+type "%NEW_BND%" >> "%TMP_BND%"
+del "%NEW_BND%"
 
 rem Back up to the first free user.bnd.before_mfd_N, so earlier backups are never overwritten.
 set N=1

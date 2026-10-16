@@ -287,9 +287,10 @@ NEVER = ["enter", "keypad_enter", "esc", "tab", "space", "bs", "backspace", "`",
          ",", ".", "/", "mouse_wheel_up", "mouse_wheel_down"]
 
 
-def run_bat(folder):
-    """Runs the script against a fixture folder, passed as its argument so it never looks at the real one."""
-    return subprocess.run(["cmd", "/c", str(BAT), str(folder)], input="\n", capture_output=True, text=True).stdout
+def run_bat(folder, answers=""):
+    """Runs the script against a fixture folder, passed as its argument so it never looks at the real one.
+    answers: one line per y/n question, in order; the final newline answers the closing pause."""
+    return subprocess.run(["cmd", "/c", str(BAT), str(folder)], input=answers + "\n", capture_output=True, text=True).stdout
 
 
 def lines(folder):
@@ -366,3 +367,58 @@ def test_bat_handles_missing_final_newline(tmp_path):
     (tmp_path / "user.bnd").write_bytes(('bind k "keep"').encode())
     run_bat(tmp_path)
     assert 'bind k "keep"' in lines(tmp_path)
+
+
+OFFER_FIXTURE = [
+    'bind o wpn_setting_toggle', 'bind t wpn_setting_toggle',  # t: not a default key, command also on o -> offered
+    'bind y "use_obj psi booster"',                             # only binding of its command -> never offered
+    'bind b cycle_ammo', 'bind f cycle_ammo',                   # f is a default key -> never offered
+    'bind joy3 interact', 'bind g interact',                    # only a gamepad button shares it -> never offered
+    'bind i foo', 'bind v foo',                                 # only other offered keys share it -> never offered
+    'bind k "run user:/psi_macros\\Macro_k.cmd"',               # already a macro key
+]
+
+
+def write_fixture(folder):
+    (folder / "user.bnd").write_bytes(("\r\n".join(OFFER_FIXTURE) + "\r\n").encode())
+
+
+def test_bat_default_keys_match_the_game():
+    """WHY: Default keys are never offered for replacing; the script's list must be the game's own defaults."""
+    if not GAME.exists():
+        pytest.skip("game install not found")
+    shock = zipfile.ZipFile(GAME / "base.kpf").read("defaults/shock.bnd").decode("latin-1")
+    game = {l.split()[1].lower() for l in shock.splitlines() if l.startswith("bind ") and "+" not in l.split()[1]
+            and not l.split()[1].lower().startswith("joy")}
+    listed = re.search(r'set "DEFAULT_KEYS=([^"]*)"', BAT.read_text()).group(1).split()
+    assert set(listed) == game
+
+
+def test_bat_offers_only_keys_whose_command_is_bound_elsewhere(tmp_path):
+    """WHY: Answering y must never take a default key or leave a command with no key."""
+    write_fixture(tmp_path)
+    out = run_bat(tmp_path, "n\n")
+    asked = re.findall(r"Use (\S+) as a macro key\?", out)
+    assert asked == ["t"]
+    assert "also on o" in out
+
+
+def test_bat_y_replaces_the_binding(tmp_path):
+    """WHY: A replaced key must lose its old line (two bindings for one key would be ambiguous) and keep the rest."""
+    write_fixture(tmp_path)
+    run_bat(tmp_path, "y\n")
+    after = lines(tmp_path)
+    assert 'bind t "run user:/psi_macros\\Macro_t.cmd"' in after
+    assert 'bind t wpn_setting_toggle' not in after
+    assert [l for l in after if l.startswith("bind t ")] == ['bind t "run user:/psi_macros\\Macro_t.cmd"']
+    for line in OFFER_FIXTURE:
+        if not line.startswith("bind t "):
+            assert line in after
+
+
+def test_bat_n_keeps_the_binding(tmp_path):
+    """WHY: n (or no answer at all) must leave the player's binding as it was."""
+    write_fixture(tmp_path)
+    run_bat(tmp_path, "n\n")
+    assert 'bind t wpn_setting_toggle' in lines(tmp_path)
+    assert not [l for l in lines(tmp_path) if "Macro_t" in l]

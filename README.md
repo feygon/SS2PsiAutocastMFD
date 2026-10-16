@@ -35,7 +35,7 @@ T1–T5 jump to a tier.
 Scripts can't bind keys while the game runs, so this happens once, with the game closed, in:
 `%USERPROFILE%\Saved Games\Nightdive Studios\System Shock 2 Remastered\user.bnd`
 
-Back it up first. Either run `setupPsiMfd.bat` from the GitHub repo (`extras/`), which binds free keys for you, or add the lines yourself:
+Back it up first. Either run `setupPsiMfd.bat` from the GitHub repo (`extras/`), which binds free keys for you (and asks, key by key, about non-default keys whose command is also on another key), or add the lines yourself:
 
 ```
 bind keypad_star "summon_obj PsiMfd"

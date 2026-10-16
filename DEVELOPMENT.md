@@ -43,7 +43,9 @@
 - **Overlay API:** NewDark's `IShockOverlayHandler` (Squirrel). Nightdive's `libs/player.nut` registers one handler and forwards `DrawHUD`, mouse and key events to `ND.g_PlayerCore`; `libs/ui_handler.nut` draws registered root panels each frame and routes hover, clicks and text input. Our panel plugs into that instead of registering its own handler.
 - **Build UI inside the draw step:** constructing widgets from a timer logged "ShockOverlay::GetStringSize called outside of IShockOverlayHandler::DrawHUD". Create panels from an `OnFrameUpdate` handler (called from `DrawHUD`).
 - **Key names:** `user.bnd` uses Dark names (`keypad_plus`, `keypad_home` for keypad 7, `keypad_up` for 8, `keypad_pgup` for 9). The console uses KEX names (`kp_plus`, `kp_7`).
-- **Free keys on the author's machine** (2026-10-16): only `keypad_star`, `keypad_slash`, `keypad_minus`, `keypad_center`, `keypad_del`, `keypad_ins`. Every letter and F-key is bound.
+- **Free keys on the author's machine** (2026-10-16): only `keypad_star`, `keypad_slash`, `keypad_minus`, `keypad_center`, `keypad_del`, `keypad_ins`. Every letter and F-key is bound. So setupPsiMfd.bat also offers (y/n) bound keys it can take without losing anything: not in the game's defaults, and the command is on another keyboard or mouse binding.
+- **Default bindings:** `base.kpf` → `defaults/shock.bnd` (the game's own defaults; `defaults/default.bnd` has only the console key). setupPsiMfd.bat copies its plain keyboard and mouse keys into `DEFAULT_KEYS`; a test checks the copy against the game file.
+- **Never `open(path, "wb").write(build())`** for user.bnd: `open` truncates before `build()` runs, so an exception leaves an empty file. Build the bytes first (it happened once, 2026-10-16; restored from the backup).
 
 ## Psi power data (for the MFD's cells)
 
