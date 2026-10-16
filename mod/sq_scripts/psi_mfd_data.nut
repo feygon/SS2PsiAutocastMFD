@@ -109,6 +109,60 @@ ND.psiMfdEffects <- {
 	[39] = @(o, p) ({ time = PsiMfdShieldTime(o, p), effect = PsiMfdEffect("-60% damage") }),
 };
 
+// Cyber module costs. Gamesys parameter tables aren't readable from scripts, so these are copied from
+// shockscp.gam (identical in shock2.gam, 2026-10-16). PSICOST, by discipline number: the tier header
+// (0, 8, 16, 24, 32) is the cost to unlock the tier; the table ends at 33, and its last value covers the
+// rest of tier 5.
+ND.psiMfdCosts <- [10, 3, 3, 3, 3, 3, 3, 3, 20, 5, 5, 5, 5, 5, 5, 5, 30, 8, 8, 8, 8, 8, 8, 8,
+	50, 12, 12, 12, 12, 12, 12, 12, 75, 20];
+// DIFFPARAM's first six values are the upgrade cost multiplier, by Quest "Difficulty" (1 Easy, 2 Normal,
+// 3 Hard, 4 Impossible, 5 multiplayer): 1.0, 0.85, 1.0, 1.4, 1.8, 1.4. The game rounds base x multiplier down,
+// in single-precision floats, so Hard 5 x 1.4 is 6 and Impossible 20 x 1.8 is 35 (the wiki's cost table:
+// https://shodan.fandom.com/wiki/Psionic_Disciplines). Integer maths reproduces that exactly: each multiplier
+// is the float32 value x 1,000,000, rounded down (1.4f = 1.39999997...).
+ND.psiMfdCostMultipliers <- [1000000, 850000, 1000000, 1399999, 1799999, 1399999];
+
+function PsiMfdCost(id) {
+	local costs = ND.psiMfdCosts;
+	local baseCost = id < costs.len() ? costs[id] : costs[costs.len() - 1];
+	local difficulty = Quest.Get("Difficulty");
+	local multiplier = difficulty >= 0 && difficulty < ND.psiMfdCostMultipliers.len() ? ND.psiMfdCostMultipliers[difficulty] : 1000000;
+	return baseCost * multiplier / 1000000;
+}
+
+// Whether the player has bought discipline (or tier header) id, reading PsiPowerDesc / PsiPower2Desc as bit
+// sets as psi_autocast does. Unverified; null when the property can't be read.
+function PsiMfdOwned(id) {
+	local bits = id < 32 ? Property.Get("Player", "PsiPowerDesc") : Property.Get("Player", "PsiPower2Desc");
+	if (typeof bits != "integer")
+		return null;
+	return ((bits >> (id % 32)) & 1) == 1;
+}
+
+// "bought", or the cost plus every tier unlock still needed to reach it: "12 + T3-T4 80" when neither
+// tier 3 nor tier 4 is bought.
+function PsiMfdCostText(id) {
+	local owned = PsiMfdOwned(id);
+	if (owned == null)
+		return "?";
+	if (owned)
+		return "bought";
+	local tier = id / 8 + 1;
+	local firstMissing = null;
+	local unlocks = 0;
+	for (local t = 1; t <= tier; t++) {
+		if (!PsiMfdOwned((t - 1) * 8)) {
+			if (firstMissing == null)
+				firstMissing = t;
+			unlocks += PsiMfdCost((t - 1) * 8);
+		}
+	}
+	local text = PsiMfdCost(id).tostring();
+	if (firstMissing != null)
+		text += " + T" + firstMissing + (firstMissing < tier ? "-T" + tier : "") + " " + unlocks;
+	return text;
+}
+
 // "Psychogenic Agility\n\nIncreases ..." -> "Psychogenic Agility".
 function PsiMfdName(id) {
 	foreach (line in split(Data.GetString("psihelp", "Psi" + id), "\n")) {
@@ -149,6 +203,7 @@ function PsiMfdBuildRows() {
 			icon = Data.GetString("psihelp", "PsiIcon" + id),
 			benefits = benefits,
 			time = "-", effect = "?", overload = "-",
+			cost = PsiMfdCostText(id),
 		};
 		if (obj) {
 			local now = ND.psiMfdEffects[id](obj, psi);

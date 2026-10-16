@@ -18,15 +18,16 @@ ND.psiMfdText <- [0.45, 0.85, 0.7];
 ND.psiMfdDim <- [0.3, 0.6, 0.5];
 
 // Columns: x offsets inside a row, set by PsiMfdLayoutColumns for the panel's width.
-ND.psiMfdColumns <- { icon = 1, tier = 60, name = 76, time = 200, effect = 266, overload = 356, add = 410 };
+ND.psiMfdColumns <- { icon = 1, tier = 60, name = 76, time = 200, effect = 266, overload = 356, cost = 400, add = 410 };
 
 // Icon and tier are fixed; the text columns share what's left of the row (which ends 36 short of the panel).
 function PsiMfdLayoutColumns(panelWidth) {
 	local c = ND.psiMfdColumns;
 	local free = panelWidth - 36 - c.name - 56;
-	c.time = c.name + (free * 0.36).tointeger();
-	c.effect = c.time + (free * 0.2).tointeger();
-	c.overload = c.effect + (free * 0.26).tointeger();
+	c.time = c.name + (free * 0.31).tointeger();
+	c.effect = c.time + (free * 0.17).tointeger();
+	c.overload = c.effect + (free * 0.22).tointeger();
+	c.cost = c.overload + (free * 0.15).tointeger();
 	c.add = c.name + free + 2;
 }
 
@@ -47,6 +48,14 @@ function PsiMfdLabel(x, y, text, color) {
 	label.Set(text, color[0], color[1], color[2]);
 	label.m_ignoreMouse = true;
 	return label;
+}
+
+// Errors must never reach the remaster's UI loop: an exception there aborts its whole frame update before it
+// clears the click queue, so the same click replays every frame and every script UI stops. Each MFD entry point
+// catches its own errors, reports them once, and closes the MFD.
+function PsiMfdFail(where, e) {
+	print("[psi_mfd] error in " + where + ": " + e + " - closing the MFD");
+	ND.psiMfdOpen = false;
 }
 
 // The entry after value in list, wrapping round; the first entry if value isn't in it.
@@ -119,7 +128,12 @@ class PsiMfdButton extends ND.UiBase {
 	}
 
 	function OnLeftClick(message) {
-		m_owner[m_method](m_argument);
+		try {
+			m_owner[m_method](m_argument);
+		}
+		catch (e) {
+			PsiMfdFail("button '" + m_text + "'", e);
+		}
 	}
 }
 
@@ -178,7 +192,12 @@ class PsiMfdRow extends ND.UiBase {
 
 	// Clicking the row itself adds a conditional overload cast, which quickfires disciplines that don't benefit.
 	function OnLeftClick(message) {
-		Add("o");
+		try {
+			Add("o");
+		}
+		catch (e) {
+			PsiMfdFail("row click", e);
+		}
 	}
 
 	function DrawAt(x, y) {
@@ -203,6 +222,8 @@ class PsiMfdRow extends ND.UiBase {
 		ShockOverlay.DrawString(m_row.effect, left + c.effect, top + 2);
 		PsiMfdColor(m_row.benefits ? ND.psiMfdBright : ND.psiMfdDim);
 		ShockOverlay.DrawString(m_row.overload, left + c.overload, top + 2);
+		PsiMfdColor(m_row.cost == "bought" ? ND.psiMfdDim : ND.psiMfdText);
+		ShockOverlay.DrawString(m_row.cost, left + c.cost, top + 2);
 		PsiMfdColor(ND.psiMfdDim);
 		ShockOverlay.DrawString(m_row.shortName, left + c.name, top + 13);
 
@@ -258,6 +279,7 @@ class PsiMfdPanel extends ND.UiBase {
 		AddChild(PsiMfdLabel(6 + c.time, headY, "Duration", ND.psiMfdDim));
 		AddChild(PsiMfdLabel(6 + c.effect, headY, "Effect", ND.psiMfdDim));
 		AddChild(PsiMfdLabel(6 + c.overload, headY, "Overload", ND.psiMfdDim));
+		AddChild(PsiMfdLabel(6 + c.cost, headY, "Cyber Mods", ND.psiMfdDim));
 
 		// Table
 		local tableY = PSI_MFD_TOP_BAR + PSI_MFD_HEADER + 2;
@@ -289,6 +311,17 @@ class PsiMfdPanel extends ND.UiBase {
 	}
 
 	function DrawAt(x, y) {
+		try {
+			return DrawPanel(x, y);
+		}
+		catch (e) {
+			PsiMfdFail("drawing", e);
+			m_active = false;
+			return null;
+		}
+	}
+
+	function DrawPanel(x, y) {
 		local hovered = base.DrawAt(x, y);
 		if (!m_active)
 			return hovered;
@@ -316,7 +349,8 @@ class PsiMfdPanel extends ND.UiBase {
 			row.shortName = PsiMfdFit(row.shortName, c.time - c.name - 4);
 			row.time = PsiMfdFit(row.time, c.effect - c.time - 4);
 			row.effect = PsiMfdFit(row.effect, c.overload - c.effect - 4);
-			row.overload = PsiMfdFit(row.overload, c.add - c.overload - 4);
+			row.overload = PsiMfdFit(row.overload, c.cost - c.overload - 4);
+			row.cost = PsiMfdFit(row.cost, c.add - c.cost - 4);
 		}
 		m_keys = PsiMfdMacroKeys();
 		m_macros = {};
@@ -516,6 +550,18 @@ class PsiMfdHandler {
 	m_name = "PsiMfdHandler";
 
 	function OnFrameUpdate(deltaTime) {
+		try {
+			Update();
+		}
+		catch (e) {
+			PsiMfdFail("frame update", e);
+			if (ND.psiMfdPanel)
+				ND.psiMfdPanel.SetActive(false);
+			ND.psiMfdWasOpen = false;
+		}
+	}
+
+	function Update() {
 		if (ND.psiMfdOpen && !ND.psiMfdPanel) {
 			ND.psiMfdPanel = PsiMfdPanel();
 			ND.g_PlayerCore.InternalMessage("RegisterRootUi", ND.psiMfdPanel);
@@ -576,3 +622,22 @@ if (!("psiDisciplines" in ND))
 ND.Archetype("PsiMfd", "ND", function(){ AddScript("PsiMfd"); });
 ND.Archetype("PsiMfdWheelUp", "ND", function(){ AddScript("PsiMfdWheel"); });
 ND.Archetype("PsiMfdWheelDown", "ND", function(){ AddScript("PsiMfdWheel"); });
+
+// Dev: overlay numbers for "open_mfd <n>" (the console takes the number, scripts the constant).
+foreach (name in ["kOverlayBuyPsi", "kOverlayBuyStats", "kOverlayBuyTech", "kOverlayBuyWeapon", "kOverlayBuyTraits",
+	"kOverlayPsi", "kOverlayMap", "kOverlaySecurity", "kOverlayElevator"]) {
+	try {
+		local found = false;
+		foreach (table in [getconsttable(), getroottable()]) {
+			if (!found && name in table) {
+				print("[psi_mfd] overlay " + name + " = " + table[name]);
+				found = true;
+			}
+		}
+		if (!found)
+			print("[psi_mfd] overlay " + name + " not found");
+	}
+	catch (e) {
+		print("[psi_mfd] overlay " + name + " not readable: " + e);
+	}
+}

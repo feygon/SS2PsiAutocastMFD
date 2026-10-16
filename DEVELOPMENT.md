@@ -24,12 +24,17 @@
 
 - **End to end:** built a macro for Keypad - in the MFD and saved it; it wrote `psi_macros\macrokpminus.cmd` (`arm,4o,w500,5o,w500,6q,w500,6q,w500,6q,w500,weapon:Wrench`), and Keypad - ran all 12 steps.
 - **Reading `user.bnd`** through `user:/\sq_cache\user.bnd` works; the MFD found Keypad - and Keypad Del.
-- **Fixed on the way:** reading with `file(path, "r")` + `readn` tripped a KEX assert (`!file->m_bTextMode`, wrap_fileio.cpp): read with `"rb"`. A class member named `file` hid the global `file()` inside methods (global calls run with the caller's `this`): call `::file`. Bitmaps tiled at a size other than their own (`HRMSUCC`, `HRMRES0`) drew other frames ("SUCCESS!"): rows now draw lines, not bitmaps.
+- **Fixed on the way:** reading with `file(path, "r")` + `readn` tripped a KEX assert (`!file->m_bTextMode`, wrap_fileio.cpp): read with `"rb"`. A class member named `file` hid the global `file()` inside methods (global calls run with the caller's `this`): call `::file`. Bitmaps tiled at a size other than their own (`HRMSUCC`, `HRMRES0`) drew other frames ("SUCCESS!"): rows now draw lines, not bitmaps. A local named `base` (a Squirrel keyword) failed the whole file at load ("expected 'IDENTIFIER'", logged only in `kexengine.log`, line and column given).
+- **An exception inside the remaster's UI loop breaks every script UI:** it aborts `PlayerCore.OnFrameUpdate` before the click queue is cleared, so the click replays and errors every frame; keybound summons stop working too. Every MFD entry point (button and row clicks, panel drawing, the frame handler) now catches its own errors, prints `[psi_mfd] error in ...` once, and closes the MFD.
 
 ## Mouse wheel (2026-10-16)
 
 - **Scripts never see the wheel.** With an overlay handler logging every `HandleKey` while the mouse was over the MFD, wheel turns produced no key events and kept switching weapons (the wheel is a `user.bnd` binding, `bind mouse_wheel_up "cycle_weapon 1"`, not a key event).
 - **`game2 bind` lines apply in cursor mode.** `game2 bind mouse_wheel_up "summon_obj PsiMfdWheelUp"` (and `_down`) made the wheel scroll the MFD while the cursor was up; normal play keeps the plain binding. `PsiMfdWheel` switches weapons itself (`cycle_weapon ±1`) when the mouse isn't over the MFD, so cursor-mode wheel behaviour is otherwise unchanged. Tested 2026-10-16: off the MFD the wheel still switched weapons.
+
+## Overlay numbers for `open_mfd`
+
+`open_mfd <n>` opens an overlay by number (`bind m "open_mfd 26"` is the map). The numbers, printed from the script constants in game (2026-10-16): BuyPsi 38, BuyStats 35, BuyTech 36, BuyWeapon 37, BuyTraits 20, Psi 11, Map 26, Security 33, Elevator 46. The order of the `kOverlay…` names in the exe is not the numbering.
 
 ## Engine facts learned
 
@@ -48,6 +53,8 @@
 - **Projectiles whose intensity is a duration:** Hypnogenesis (`StunStim` 20), Electron Suppression (`ElectroDampen` 3) and Imposed Neural Restructuring (`CharmStim` 10) have `Data 1` = 1, and the help text gives "20 / 3 / 10 seconds per PSI".
 - **`psihelp.str`** also has `PsiIcon<n>` (the icon file for discipline n, e.g. `PsiIcon3:"picn04"`), `PsiShort<n>` (a short name) and `Psi<n>` (name, effect, and a stated formula). Read with `Data.GetString("psihelp", key)`.
 - **Overload:** `P$PsiOverDe` / `P$PsiOver2D` are empty in both `shock2.gam` and `shockscp.gam`, so the overload effect is engine code. The MFD shows the overload bonus as the value at PSI + 2, capped at 8 (the cap is verified only for projectile damage).
+- **Cyber module costs:** `PSICOST` (gamesys parameter table, not readable from scripts, so copied into `psi_mfd_data.nut`): by discipline number, tier headers 10 / 20 / 30 / 50 / 75 to unlock, disciplines 3 / 5 / 8 / 12 / 20; the table stops at 33 and its last value covers the rest of tier 5. `DIFFPARAM`'s first six values are the cost multiplier by difficulty (0.85 Easy, 1 Normal, 1.4 Hard, 1.8 Impossible). The game rounds down in single precision, so Hard 5 × 1.4 = 6 and Impossible 20 × 1.8 = 35; the MFD's integer maths matches all 20 discipline costs in the wiki's table (https://shodan.fandom.com/wiki/Psionic_Disciplines). Tier unlock costs on Easy, Hard and Impossible follow the same rule but aren't checked against anything.
+- **Bought or not:** read from `PsiPowerDesc` / `PsiPower2Desc` as bit sets, tier headers included, the way psi_autocast does. Verified 2026-10-16: "bought" matched the disciplines the player owns.
 - **Still unknown:** the meaning of some data values (Neuro-Reflex Dampening 0.5 / 0.1, Adrenaline 0.13 / 1, Soma Transference 10 / 5 / 5, Neural Decontamination 5); Localized Pyrokinesis and External Psionic Detonation damage (no stim on the power or projectile).
 
 ## Design that follows
