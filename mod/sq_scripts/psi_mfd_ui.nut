@@ -238,6 +238,7 @@ class PsiMfdPanel extends ND.UiBase {
 	m_visibleRows = 0;
 	m_scroll = 0;
 	m_keys = null;        // from PsiMfdMacroKeys()
+	m_bindings = null;    // from PsiMfdBindings(), read each time the MFD opens
 	m_keyIndex = 0;
 	m_macro = null;
 	m_macros = null;       // key -> PsiMfdMacro, kept while the MFD is open so switching keys keeps edits
@@ -352,7 +353,8 @@ class PsiMfdPanel extends ND.UiBase {
 			row.overload = PsiMfdFit(row.overload, c.cost - c.overload - 4);
 			row.cost = PsiMfdFit(row.cost, c.add - c.cost - 4);
 		}
-		m_keys = PsiMfdMacroKeys();
+		m_bindings = PsiMfdBindings();
+		m_keys = PsiMfdMacroKeys(m_bindings);
 		m_macros = {};
 		if (m_keyIndex >= m_keys.len())
 			m_keyIndex = 0;

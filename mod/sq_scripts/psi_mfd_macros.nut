@@ -75,36 +75,86 @@ function PsiMfdWriteFile(path, text) {
 	output.close();
 }
 
-// [{ key = "g", file = "macrog.cmd" }, ...] for every binding that runs a file in psi_macros.
-// The game writes user.bnd in lower case.
-function PsiMfdMacroKeys() {
-	local keys = [];
-	local text = null;
+// user.bnd's text, or null if it can't be read.
+function PsiMfdReadBnd() {
 	foreach (path in [PSI_MFD_ROOT + "user.bnd", "user:/user.bnd"]) {
 		try {
-			text = PsiMfdReadFile(path);
-			break;
+			return PsiMfdReadFile(path);
 		}
 		catch (e) {}
 	}
-	if (text == null) {
-		print("[psi_mfd] couldn't read user.bnd");
-		return keys;
-	}
-	local marker = PSI_MFD_RUN_PREFIX.tolower();
+	print("[psi_mfd] couldn't read user.bnd");
+	return null;
+}
+
+// key -> { command, lower, combo } for every "bind <key> <command>" line (R10); null if user.bnd can't be read.
+// Outer quotes are removed; game2 and comment lines are ignored; a key bound twice keeps its last line.
+function PsiMfdBindings() {
+	local text = PsiMfdReadBnd();
+	if (text == null)
+		return null;
+	local bindings = {};
 	foreach (raw in split(text, "\n")) {
-		local line = strip(raw).tolower();
-		if (!startswith(line, "bind "))
+		local line = strip(raw);
+		if (line.len() < 5 || line.slice(0, 5).tolower() != "bind ")
 			continue;
-		local at = line.find(marker);
-		local keyEnd = line.find(" ", 5);
-		if (at == null || keyEnd == null)
+		local rest = strip(line.slice(5));
+		local space = rest.find(" ");
+		if (space == null)
 			continue;
-		local rest = line.slice(at + marker.len());
-		local fileEnd = rest.find(".cmd");
-		if (fileEnd != null)
-			keys.push({ key = line.slice(5, keyEnd), file = rest.slice(0, fileEnd + 4) });
+		local key = rest.slice(0, space).tolower();
+		local command = strip(rest.slice(space + 1));
+		if (command.len() >= 2 && command[0] == '"' && command[command.len() - 1] == '"')
+			command = command.slice(1, -1);
+		if (key in bindings)
+			delete bindings[key];
+		bindings[key] <- { command = command, lower = command.tolower(), combo = key.find("+") != null };
 	}
+	return bindings;
+}
+
+// The macro file a lower-case command runs, if it's "run user:/psi_macros\<plain name>.cmd"; else null.
+function PsiMfdMacroFile(lower) {
+	local prefix = PSI_MFD_RUN_PREFIX.tolower();
+	if (!startswith(lower, prefix))
+		return null;
+	local rest = lower.slice(prefix.len());
+	if (rest.find("\\") != null || rest.find("/") != null || rest.find("..") != null || !endswith(rest, ".cmd"))
+		return null;
+	return rest;
+}
+
+// "has" (a step or a finish weapon), "empty" (reads, but neither), or "missing" (can't be read). R12.
+function PsiMfdMacroFileState(fileName) {
+	local macro = PsiMfdMacro("", fileName);
+	try {
+		if (!macro.Load())
+			return "missing";
+	}
+	catch (e) {
+		return "missing";
+	}
+	return macro.steps.len() || macro.finish != "" ? "has" : "empty";
+}
+
+// [{ key, file }] for every key whose R11 state is "macro": keyboard order first, then other keys by name.
+function PsiMfdMacroKeys(bindings) {
+	local keys = [];
+	if (bindings == null)
+		return keys;
+	local seen = {};
+	foreach (k in ND.psiMfdKeyboard) {
+		if (!(k.n in seen) && PsiMfdKeyState(k.n, bindings, {}).state == "macro")
+			keys.push({ key = k.n, file = PsiMfdMacroFile(bindings[k.n].lower) });
+		seen[k.n] <- true;
+	}
+	local others = [];
+	foreach (key, b in bindings) {
+		if (!(key in seen) && !b.combo && PsiMfdKeyState(key, bindings, {}).state == "macro")
+			others.push({ key = key, file = PsiMfdMacroFile(b.lower) });
+	}
+	others.sort(@(a, b) a.key <=> b.key);
+	keys.extend(others);
 	return keys;
 }
 
