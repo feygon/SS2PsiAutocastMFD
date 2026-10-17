@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Never a macro key (C1): Enter, Esc, Tab, Space, Backspace, Caps Lock, Shift, Ctrl, Alt, punctuation, the mouse wheel, keypad +.
-- The MFD never edits `user.bnd` (C2); setupPsiMfd.bat is unchanged (C3).
+- Players never edit `user.bnd` by hand (C2, corrected 2026-10-17: the MFD and the script may write it).
 - Every UI entry point catches its own errors with `PsiMfdFail("<name>", e)` (R20); an uncaught error in the UI loop breaks every script UI.
 - Call the I/O library as `::file`, read files with `"rb"`, never name a local `base` (all Squirrel pitfalls recorded in DEVELOPMENT.md).
 - Functions aim at ~100 lines; over 300 is blocking (R25).

@@ -1,6 +1,6 @@
 # Hotkey picker: design
 
-**TLDR:** The psi MFD gets a keyboard view (open it with **Keys** or by clicking a key-name box). It replaces the discipline table and shows every key's state (macro key, free, game key, mod key, not usable) with marks (`=` also on another key, red `!` conflict, `?` broken macro file). Clicking a selectable key picks it for the macro editor. Macros on free or game keys are saved to `Macro_<key>.cmd`, and the MFD says what to do outside the game for the key to run them. The MFD never edits `user.bnd`. Target release: 1.2.
+**TLDR:** The psi MFD gets a keyboard view (open it with **Keys** or by clicking a key-name box). It replaces the discipline table and shows every key's state (macro key, free, game key, mod key, not usable) with marks (`=` also on another key, red `!` conflict, `?` broken macro file). Clicking a selectable key picks it for the macro editor. Macros on free or game keys are saved to `Macro_<key>.cmd`, and the MFD says what to do outside the game for the key to run them. Target release: 1.2.
 
 Date: 2026-10-16. Mod: psi_autocast_mfd (this repo), after release 1.1.
 
@@ -26,7 +26,7 @@ Three jobs, equally weighted (user, 2026-10-16):
 ## Constraints (user decisions)
 
 - C1. Never a macro key: Enter, Esc, Tab, Space, Backspace, Caps Lock, Shift, Ctrl, Alt, punctuation, the mouse wheel, and keypad + (reserved for psi_autocast's cancel).
-- C2. The MFD doesn't edit `user.bnd`. To free a game key, the player clears it in the game's Controls menu.
+- C2. Players never have to quit the game and edit `user.bnd` by hand (user, 2026-10-17: "Users should not have to quit the game and directly edit user.bnd"). The MFD and setupPsiMfd.bat may write it. (An earlier reading, "the MFD never edits user.bnd", was wrong.)
 - C3. setupPsiMfd.bat is unchanged.
 
 ## Requirements
@@ -191,6 +191,6 @@ Label fit at 470 wide (R8) depends on the game's font, so it's only checked in g
 
 ## Out of scope
 
-- Editing `user.bnd` from the MFD; changing setupPsiMfd.bat.
+- (Was: "editing user.bnd from the MFD" — out of scope for 1.2 only, not a rule; see C2.)
 - Non-US keyboard layouts; gamepad bindings.
 - README, Nexus description and changelog updates happen at release (1.2), after the in-game test.
