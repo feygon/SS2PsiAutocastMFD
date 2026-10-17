@@ -42,7 +42,8 @@
 - **Key names proven** by the game keeping them when it rewrote `user.bnd` (19:06), with macros on `;` and `/` running to `chain: done`: `, . / ; ]`, plus keypad numbers and arrows (the game's own defaults). `'`, `[` and `\` were already proven: the author's game-written `user.bnd` binds them (chat, detox patch, worm launcher). `;` is a comment character at line start in `.bnd` files but works as a key name after `bind`.
 - **User decisions (2026-10-16):** keypad numbers, arrows and `, . / ; ' [ ] \` can hold macros, and setupPsiMfd.bat binds them when free like any key (punctuation by word: `Macro_comma.cmd`); keys running psi_autocast scripts are ordinary game keys, not reserved.
 - **Batch:** `for /f` skips lines starting with `;` unless `eol=` is set; findstr reads `\` in a `/c:` string as an escape, so the backslash key is searched as `\\`.
-- **Not yet tried in game:** saving on a game key and the red `!` (TEST_PLAN K6, K4), the narrow-window fit (K17).
+- **Red `!` verified (2026-10-17):** after T's macro was saved and T was put back on its game action in Controls, T showed the red `!`.
+- **Not yet tried in game:** the narrow-window fit (K17), first run (binding an open key on load).
 
 ## Mouse wheel (2026-10-16)
 
