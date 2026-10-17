@@ -140,7 +140,7 @@ function PsiMfdAddMarks(s, name, bindings) {
 	local bound = s.state == "game" || s.state == "mod";
 	if (bound && PsiMfdAlsoOn(name, bindings).len())
 		s.marks += "=";
-	if (bound && s.content == "has")
+	if (bound && (s.content == "has" || s.content == "script"))
 		s.marks += "!";
 	else if (s.content == "empty")
 		s.marks += "?";
@@ -177,6 +177,8 @@ function PsiMfdKeyHover(name, ks, bindings) {
 		case "macro":
 			if (name in ND.psiMfdPending)
 				text += "macro key: restart the game to use it";
+			else if (ks.content == "script")
+				text += "runs a psi_autocast script (" + ks.file + "); a macro saved here replaces it";
 			else
 				text += ks.content == "has" ? "macro (" + ks.file + ")" : "macro key, no macro yet";
 			break;
@@ -197,9 +199,9 @@ function PsiMfdKeyHover(name, ks, bindings) {
 // R15 look. double = drawn with a second outline ("filled": the overlay has no fill call).
 function PsiMfdKeyLook(ks) {
 	switch (ks.state) {
-		case "macro": return { edge = ND.psiMfdBright, text = ND.psiMfdBright, double = ks.content == "has" };
+		case "macro": return { edge = ND.psiMfdBright, text = ND.psiMfdBright, double = ks.content == "has" || ks.content == "script" };
 		case "free":
-			if (ks.content == "has")
+			if (ks.content == "has" || ks.content == "script")
 				return { edge = ND.psiMfdText, text = ND.psiMfdText, double = true };
 			return { edge = ND.psiMfdText, text = ND.psiMfdText, double = false };
 		case "game": return { edge = ND.psiMfdGrey, text = ND.psiMfdGrey, double = false };

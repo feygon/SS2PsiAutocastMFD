@@ -517,8 +517,9 @@ def test_bat_binds_the_starter_psi_keys(tmp_path):
     assert 'bind j "run user:/psi_macros\\Macro_j.cmd"' in after
     g = (tmp_path / "psi_macros" / "Macro_g.cmd").read_text().splitlines()
     j = (tmp_path / "psi_macros" / "Macro_j.cmd").read_text().splitlines()
-    assert g == ["set psi_chain arm,6o", "set psi_draw_ms 800", "set psi_auto_hypo 0", "set psi_chain_gap_ms 500", "summon_obj PsiChain"]
-    assert j[0] == "set psi_chain arm,15q,w500,last" and j[-1] == "summon_obj PsiChain"
+    # The same files psi_autocast's starterPsiPowers.bat writes: one line running the psi script.
+    assert g == ["run psi\\T1_Projected_Cryokinesis.cmd"]
+    assert j == ["run psi\\chains\\Starter_Localized_Pyrokinesis.cmd"]
     assert "Starter key: g" in out
 
 
@@ -550,8 +551,8 @@ def test_bat_upgrades_the_starter_scripts_bindings(tmp_path):
     after = lines(tmp_path)
     assert [l for l in after if l.startswith("bind g ")] == ['bind g "run user:/psi_macros\\Macro_g.cmd"']
     assert [l for l in after if l.startswith("bind j ")] == ['bind j "run user:/psi_macros\\Macro_j.cmd"']
-    assert (tmp_path / "psi_macros" / "Macro_g.cmd").read_text().splitlines()[0] == "set psi_chain arm,6o"
-    assert (tmp_path / "psi_macros" / "Macro_j.cmd").read_text().splitlines()[0] == "set psi_chain arm,15q,w500,last"
+    assert (tmp_path / "psi_macros" / "Macro_g.cmd").read_text().splitlines() == ["run psi\\T1_Projected_Cryokinesis.cmd"]
+    assert (tmp_path / "psi_macros" / "Macro_j.cmd").read_text().splitlines() == ["run psi\\chains\\Starter_Localized_Pyrokinesis.cmd"]
     assert "Starter key: g" in out and "Starter key: j" in out
 
 

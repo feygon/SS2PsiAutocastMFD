@@ -428,6 +428,8 @@ class PsiMfdPanel extends ND.UiBase {
 				m_macro = PsiMfdMacro(key.key, key.file);
 				m_macros[id] <- m_macro;
 				SetStatus(m_macro.Load() ? "Loaded" : "New macro");
+				if (m_macro.script != "" && !m_macro.steps.len() && m_macro.finish == "")
+					SetEditLabel("Runs " + m_macro.script + ": a macro saved here replaces it.");
 			}
 		}
 		RebuildSteps();

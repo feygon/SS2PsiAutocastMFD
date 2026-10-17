@@ -1,6 +1,6 @@
 @echo off
 rem setupPsiMfd.bat: sets up the keys for psi_autocast and psi_autocast_mfd in the Remaster's user.bnd, using keys that are free.
-rem   - starter keys:  G and J become macro keys preloaded with psi_autocast's two starter casts (replaces starterPsiPowers.bat)
+rem   - starter keys:  G and J run Macro_g.cmd / Macro_j.cmd holding psi_autocast's two starter casts (as starterPsiPowers.bat does)
 rem   - an open key:   bind <key> "summon_obj PsiMfd"
 rem   - macro keys:    bind <key> "run user:/psi_macros\Macro_<key>.cmd"   (every free key in the list below)
 rem   - keypad +:      reserved for psi_autocast's cancel key (bind keypad_plus "run psi\actions\Cancel_Macro.cmd")
@@ -107,15 +107,14 @@ if errorlevel 1 (
     )
 )
 
-rem Starter psi keys (what psi_autocast's starterPsiPowers.bat did): G and J, if free, become ordinary macro keys
-rem (Macro_g.cmd, Macro_j.cmd, as the MFD names them) preloaded with the two starter casts, so the MFD can edit them.
-rem An existing Macro_g.cmd / Macro_j.cmd is kept. G: Projected Cryokinesis (discipline 6), overloading if it helps;
-rem J: Localized Pyrokinesis (15) quickfired, then the previous weapon (psi_autocast's Starter_Localized_Pyrokinesis).
+rem Starter psi keys, exactly as psi_autocast's starterPsiPowers.bat sets them: G and J, if free, run Macro_g.cmd and
+rem Macro_j.cmd in psi_macros, each holding one line that runs the starter psi script, so the MFD can replace them
+rem with macros. An existing Macro_g.cmd / Macro_j.cmd is kept.
 rem If starterPsiPowers.bat already bound G or J (its exact lines), the key is upgraded to the macro version without
 rem asking: the same cast, now editable in the MFD. Any other binding on G or J is left alone.
-call :starter_key g "arm,6o" "T1_Projected_Cryokinesis.cmd"
+call :starter_key g "run psi\T1_Projected_Cryokinesis.cmd" "T1_Projected_Cryokinesis.cmd"
 if "!STARTED!"=="1" echo Starter key: g  casts Projected Cryokinesis, overloading it automatically.
-call :starter_key j "arm,15q,w500,last" "chains\\Starter_Localized_Pyrokinesis.cmd"
+call :starter_key j "run psi\chains\Starter_Localized_Pyrokinesis.cmd" "chains\\Starter_Localized_Pyrokinesis.cmd"
 if "!STARTED!"=="1" echo Starter key: j  casts Localized Pyrokinesis, then switches back to your previous weapon.
 
 rem Macro keys: every free candidate. Keys already bound (to a macro or anything else) are skipped.
@@ -229,7 +228,7 @@ echo Enable psi_autocast and psi_autocast_mfd for your save, then press the open
 echo If a key does nothing, start and quit the game, then check user.bnd: if its line is gone, the game didn't accept that key.
 goto :end
 
-rem :starter_key <key> "<chain>" "<starter file, as a findstr pattern>"  sets STARTED=1 when the key gets its starter
+rem :starter_key <key> "<file line>" "<starter file, as a findstr pattern>"  sets STARTED=1 when the key gets its starter
 rem macro: because it was free, or because it had starterPsiPowers.bat's own binding (run psi\<starter file>).
 :starter_key
 set STARTED=0
@@ -246,20 +245,14 @@ set "REPLACE_ARGS=!REPLACE_ARGS! /c:"bind %~1 ""
 set STARTED=1
 goto :eof
 
-rem :starter_macro <key> "<chain>"  binds key to its macro file and writes the file (MFD format) unless it exists.
+rem :starter_macro <key> "<file line>"  binds key to its macro file and writes the file (that one line) unless it exists.
 :starter_macro
 >> "%NEW_BND%" echo bind %~1 "run user:/psi_macros\Macro_%~1.cmd"
 set "TAKEN=!TAKEN!%~1 "
 set /a ADDED+=1
 if not exist "%BND_DIR%\psi_macros" mkdir "%BND_DIR%\psi_macros"
 if exist "%BND_DIR%\psi_macros\Macro_%~1.cmd" goto :eof
-> "%BND_DIR%\psi_macros\Macro_%~1.cmd" (
-    echo set psi_chain %~2
-    echo set psi_draw_ms 800
-    echo set psi_auto_hypo 0
-    echo set psi_chain_gap_ms 500
-    echo summon_obj PsiChain
-)
+> "%BND_DIR%\psi_macros\Macro_%~1.cmd" echo %~2
 goto :eof
 
 rem :key_of <candidate>  sets KEY to the key name in user.bnd: punctuation candidates are words.

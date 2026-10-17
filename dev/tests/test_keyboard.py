@@ -133,7 +133,7 @@ def key_state(name, b, file_state):
         s["content"] = file_state.get(s["contentFile"].lower(), "missing")
     if s["state"] in ("game", "mod") and also_on(name, b):
         s["marks"] += "="
-    if s["state"] in ("game", "mod") and s["content"] == "has":
+    if s["state"] in ("game", "mod") and s["content"] in ("has", "script"):
         s["marks"] += "!"
     elif s["content"] == "empty":
         s["marks"] += "?"
@@ -414,3 +414,29 @@ def test_first_run_binds_an_open_key_in_game():
     ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
     assert "function PsiMfdFirstRun(" in ui
     assert 'PsiMfdFail("first run"' in ui
+
+
+def file_state(text):
+    """The twin of PsiMfdMacroFileState for a file's text: has / script / empty."""
+    chain = re.search(r"^set psi_chain (\S+)", text, re.M)
+    if chain and [tok for tok in chain.group(1).split(",") if tok != "arm" and not re.fullmatch(r"w\d+", tok)]:
+        return "has"
+    return "script" if re.search(r"^run psi\\", text, re.M | re.I) else "empty"
+
+
+def test_a_file_running_a_psi_script_is_working_content(b):
+    """WHY: The starter scripts bind G and J to Macro_g.cmd / Macro_j.cmd holding one line, run psi\\<script>.
+    That key works; the MFD must show it as filled, not as an empty file (?), and a game key with such a file
+    is a conflict (!) like one with a macro."""
+    assert file_state("run psi\\T1_Projected_Cryokinesis.cmd\n") == "script"
+    assert file_state("set psi_chain arm,6o\nsummon_obj PsiChain\n") == "has"
+    assert file_state("summon_obj PsiChain\n") == "empty"
+    g = key_state("g", b, {"macrog.cmd": "script"})
+    assert (g["state"], g["content"], g["marks"]) == ("macro", "script", "")
+    t = key_state("t", b, {"macro_t.cmd": "script"})
+    assert "!" in t["marks"]
+    macros = (SCRIPTS / "psi_mfd_macros.nut").read_text(encoding="utf-8")
+    assert '"script"' in macros and "script = " in macros
+    for name in ["PsiMfdAddMarks", "PsiMfdKeyLook", "PsiMfdKeyHover"]:
+        body = KB[KB.index(f"function {name}("):]
+        assert '"script"' in body[:body.index("\n}\n")], name

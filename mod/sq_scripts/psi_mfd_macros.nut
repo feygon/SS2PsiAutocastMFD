@@ -159,7 +159,8 @@ function PsiMfdMacroFile(lower) {
 	return rest;
 }
 
-// "has" (a step or a finish weapon), "empty" (reads, but neither), or "missing" (can't be read). R12.
+// "has" (a step or a finish weapon), "script" (no macro, but a run psi\... line), "empty" (reads, but none of
+// those), or "missing" (can't be read). R12.
 function PsiMfdMacroFileState(fileName) {
 	local macro = PsiMfdMacro("", fileName);
 	try {
@@ -169,7 +170,9 @@ function PsiMfdMacroFileState(fileName) {
 	catch (e) {
 		return "missing";
 	}
-	return macro.steps.len() || macro.finish != "" ? "has" : "empty";
+	if (macro.steps.len() || macro.finish != "")
+		return "has";
+	return macro.script != "" ? "script" : "empty";   // "script": runs a psi_autocast script (the starter keys)
 }
 
 // [{ key, file }] for every key whose R11 state is "macro": keyboard order first, then other keys by name.
@@ -204,6 +207,7 @@ class PsiMfdMacro {
 	autoHypo = 0;
 	drawMs = 800;
 	dirty = false;      // edited since the last load or save
+	script = "";        // a "run psi\..." line in the file (the starter keys run psi_autocast scripts this way)
 
 	constructor(key_, file_) {
 		key = key_;
@@ -256,15 +260,23 @@ class PsiMfdMacro {
 		arm = false;
 		steps = [];
 		finish = "";
+		script = "";
+		local chainFound = false;
 		foreach (raw in split(text, "\n")) {
 			local line = strip(raw);
 			if (startswith(line, "set psi_auto_hypo "))
 				autoHypo = line.slice(18).tointeger() ? 1 : 0;
 			else if (startswith(line, "set psi_draw_ms "))
 				drawMs = line.slice(16).tointeger();
-			else if (startswith(line, "set psi_chain "))
+			else if (startswith(line, "set psi_chain ")) {
+				chainFound = true;
 				ParseChain(line.slice(14));
+			}
+			else if (startswith(line.tolower(), "run psi\\"))
+				script = line.slice(4);
 		}
+		if (!chainFound)
+			arm = true;   // no macro in the file yet: a new one starts by drawing the amp, as usual
 		return true;
 	}
 
