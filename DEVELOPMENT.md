@@ -29,6 +29,18 @@
 - **Fixed on the way:** reading with `file(path, "r")` + `readn` tripped a KEX assert (`!file->m_bTextMode`, wrap_fileio.cpp): read with `"rb"`. A class member named `file` hid the global `file()` inside methods (global calls run with the caller's `this`): call `::file`. Bitmaps tiled at a size other than their own (`HRMSUCC`, `HRMRES0`) drew other frames ("SUCCESS!"): rows now draw lines, not bitmaps. A local named `base` (a Squirrel keyword) failed the whole file at load ("expected 'IDENTIFIER'", logged only in `kexengine.log`, line and column given).
 - **An exception inside the remaster's UI loop breaks every script UI:** it aborts `PlayerCore.OnFrameUpdate` before the click queue is cleared, so the click replays and errors every frame; keybound summons stop working too. Every MFD entry point (button and row clicks, panel drawing, the frame handler) now catches its own errors, prints `[psi_mfd] error in ...` once, and closes the MFD.
 
+## Keyboard view (hotkey picker) prototype, 2026-10-16
+
+- **Built and looked at in game** (spec `docs/superpowers/specs/2026-10-16-hotkey-picker-design.md`, plan `docs/superpowers/plans/2026-10-16-hotkey-picker.md`). The layout fits the table area; labels fit at the author's canvas once clipped without "..." (Home showed as "Ho...").
+- **No fill call:** the overlay draws lines only (`ND.DrawBox` is four `ShockOverlay.DrawLine`s; background bitmaps tile and draw other frames at other sizes), so "has a macro" is a double outline.
+- **Colours:** the MFD background (TRAIT) measures about RGB 0.02 / 0.29 / 0.24. Greys darker than that were unreadable; key colours are now all lighter (a test enforces luminance >= 0.45).
+- **Consts are resolved when a file compiles.** A const from a file that compiles later is looked up at runtime and fails; `psi_mfd_keyboard.nut` has its own `PSI_MFD_KEY_INFO` (a test checks every file).
+- **Prefix bug found in game:** macro keys showed as game keys because `PSI_MFD_RUN_PREFIX` has no `run `. The Python twin now builds its prefix from the `.nut` const.
+- **Key names proven** by the game keeping them when it rewrote `user.bnd` (19:06), with macros on `;` and `/` running to `chain: done`: `, . / ; ]`, plus keypad numbers and arrows (the game's own defaults). `;` is a comment character at line start in `.bnd` files but works as a key name after `bind`.
+- **User decisions (2026-10-16):** keypad numbers, arrows and `, . / ; ' [ ] \` can hold macros, and setupPsiMfd.bat binds them when free like any key (punctuation by word: `Macro_comma.cmd`); keys running psi_autocast scripts are ordinary game keys, not reserved.
+- **Batch:** `for /f` skips lines starting with `;` unless `eol=` is set; findstr reads `\` in a `/c:` string as an escape, so the backslash key is searched as `\\`.
+- **Not yet tried in game:** saving on a game key and the red `!` (TEST_PLAN K6, K4), the narrow-window fit (K17).
+
 ## Mouse wheel (2026-10-16)
 
 - **Scripts never see the wheel.** With an overlay handler logging every `HandleKey` while the mouse was over the MFD, wheel turns produced no key events and kept switching weapons (the wheel is a `user.bnd` binding, `bind mouse_wheel_up "cycle_weapon 1"`, not a key event).

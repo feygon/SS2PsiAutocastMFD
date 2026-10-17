@@ -1,0 +1,143 @@
+; Default binds for System Shock 2: 25th Anniversary Remaster
+
+bind ' chat
+bind - "equip_weapon crystal shard"
+bind 0 "equip_weapon fusion cannon"
+bind 1 "equip_weapon wrench"
+bind 2 "equip_weapon pistol"
+bind 3 "equip_weapon shotgun"
+bind 4 "equip_weapon assault rifle"
+bind 5 "equip_weapon laser pistol"
+bind 6 "equip_weapon emp rifle"
+bind 7 "equip_weapon electro shock"
+bind 8 "equip_weapon gren launcher"
+bind 9 "equip_weapon stasis field generator"
+bind = "equip_weapon viral prolif"
+bind \ "equip_weapon worm launcher"
+bind ` "equip_weapon psi amp"
+bind a +moveleftfast
+bind alt +split
+bind b cycle_ammo
+bind backspace stop_email
+bind c crouch
+bind c+alt toggle_compass
+bind ctrl +crouchhold
+bind d +moverightfast
+bind del stop_email
+bind down +backfast
+bind e +leanright
+bind esc sim_menu
+bind f cycle_ammo
+bind f1+shift "quickbind 1"
+bind f10 "quickuse 10"
+bind f10+shift "quickbind 10"
+bind f11 "quickuse 11"
+bind f11+shift "quickbind 11"
+bind f12 "quickuse 12"
+bind f12+shift "quickbind 12"
+bind f2+shift "quickbind 2"
+bind f3 "quickuse 3"
+bind f3+shift "quickbind 3"
+bind f4 "quickuse 4"
+bind f4+shift "quickbind 4"
+bind f5 "quickuse 5"
+bind f5+shift "quickbind 5"
+bind f6 "quickuse 6"
+bind f6+shift "quickbind 6"
+bind f7 "quickuse 7"
+bind f7+shift "quickbind 7"
+bind f8 "quickuse 8"
+bind f8+shift "quickbind 8"
+bind f9 "quickuse 9"
+bind f9+ctrl screen_dump
+bind f9+shift "quickbind 9"
+bind h "use_obj med patch"
+bind joy1 +jump
+bind joy2 crouch
+bind joy3 interact
+bind joy4 last_weapon
+bind joy5 toggle_mouse
+bind joy7 sim_menu
+bind joy8 lean
+bind joy10 +select_psi_mode
+bind joy11 +select_weapon_mode
+bind joy12 "cycle_setting_psilevel 1"
+bind joy13 play_unread_log
+bind joy14 "cycle_ammo_psipower -1"
+bind joy15 "cycle_ammo_psipower 1"
+bind joy16 +joyscaleaim
+bind joy17 +fire_weapon
+bind joy_axisx +joyxaxis
+bind joy_axisy +joyforward
+bind joy_raxisx +joyturn
+bind joy_raxisy +joylook
+bind joy_gyrox joygturn
+bind joy_gyroy joyglook
+bind keypad_center crouch
+bind keypad_down +backfast
+bind keypad_end +moveleftfast
+bind keypad_home +leanleft
+bind keypad_left +turnleftfast
+bind keypad_pgdn +moverightfast
+bind keypad_pgup +leanright
+bind keypad_right +turnrightfast
+bind keypad_up +walkfast
+bind l msg_history
+bind l+alt quickload
+bind left +moveleftfast
+bind m "open_mfd 26"
+bind m+alt "open_mfd 45"
+bind mouse1 +fire_weapon
+bind mouse2 frob_object
+bind mouse3 reload_gun
+bind mouse_axisx mturn
+bind mouse_axisy mlook
+bind mouse_wheel_down "cycle_weapon -1"
+bind mouse_wheel_up "cycle_weapon 1"
+bind n "summon_obj nav marker"
+bind o wpn_setting_toggle
+bind p "use_obj rad patch"
+bind pgdn +lookdown
+bind pgup +lookup
+bind q +leanleft
+bind r reload_gun
+bind right +moverightfast
+bind s +backfast
+bind s+alt quicksave
+bind shift +creepon
+bind space +jump
+bind t+alt clear_teleport
+bind tab toggle_mouse
+bind u play_unread_log
+bind up +walkfast
+bind w +walkfast
+bind w+alt+shift +leanforward
+bind z +voip_ptt
+
+; Single-bind mode game2 binds.
+
+game2 bind mouse1 +drag_and_drop_mode
+game2 bind mouse2 frob_object_inv
+game2 bind joy1 +impulse_action1
+game2 bind joy2 +impulse_cancel
+game2 bind joy3 +impulse_action2
+game2 bind joy4 +impulse_action3
+game2 bind joy10 +impulse_lefttab
+game2 bind joy11 +impulse_righttab
+game2 bind joy12 +impulse_up
+game2 bind joy13 +impulse_down
+game2 bind joy14 +impulse_left
+game2 bind joy15 +impulse_right
+game2 bind joy16 +impulse_leftcycle
+game2 bind joy17 +impulse_rightcycle
+
+; psi_autocast_mfd keyboard test: one key per state and mark (TEST_PLAN, Keyboard)
+bind keypad_star "summon_obj PsiMfd"
+bind keypad_plus "run psi\actions\Cancel_Macro.cmd"
+bind g "run user:/psi_macros\macrog.cmd"
+bind f1 "run user:/psi_macros\shared.cmd"
+bind f2 "run user:/psi_macros\shared.cmd"
+bind t wpn_setting_toggle
+bind x toggle_compass
+bind k "run psi\t2_localized_pyrokinesis.cmd"
+bind keypad_slash "run user:/psi_macros\macro_keypad_slash.cmd"

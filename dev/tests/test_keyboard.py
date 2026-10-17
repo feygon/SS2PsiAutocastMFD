@@ -308,3 +308,62 @@ def test_psi_autocast_keys_are_ordinary_game_keys(b):
     """WHY: User decision 2026-10-16: a key running a psi_autocast script isn't reserved; it's a game key."""
     s = key_state("k", b, {})
     assert (s["state"], s["selectable"], s["file"]) == ("game", True, "Macro_k.cmd")
+
+
+def function_lengths(code):
+    """Yields (name, lines) for every Squirrel function, by brace counting."""
+    lines = code.split("\n")
+    for i, line in enumerate(lines):
+        m = re.match(r"\s*function (\w+)\(", line)
+        if not m:
+            continue
+        depth, started = 0, False
+        for j in range(i, len(lines)):
+            depth += lines[j].count("{") - lines[j].count("}")
+            started = started or "{" in lines[j]
+            if started and depth == 0:
+                yield m.group(1), j - i + 1
+                break
+
+
+def test_no_function_over_300_lines():
+    """WHY: R25: long functions are where the UI bugs hide."""
+    for path in SCRIPTS.glob("*.nut"):
+        for name, length in function_lengths(path.read_text(encoding="utf-8")):
+            assert length <= 300, f"{path.name}: {name} is {length} lines"
+
+
+def test_keyboard_built_in_the_panel_constructor():
+    """WHY: R26: widgets made outside the draw step make the engine warn and measure text wrongly."""
+    ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
+    assert ui.count("PsiMfdKeyboard(") == 1
+    start = ui.index("class PsiMfdPanel")
+    constructor = ui[start:ui.index("function DrawAt", start)]
+    assert "PsiMfdKeyboard(" in constructor
+
+
+def test_texts_fit_in_90_characters():
+    """WHY: R16/R19: the info and label lines hold about 90 characters at the narrowest panel."""
+    legend = re.search(r'"(Bright: macro[^"]*)"', KB).group(1)
+    ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
+    game = re.search(r'name \+ "( is a game key[^"]*)"', ui).group(1)
+    assert len(legend) <= 90
+    assert len("Keypad Del" + game) <= 90
+
+
+def test_in_game_fixture_covers_every_state_and_mark():
+    """WHY: The in-game keyboard test (TEST_PLAN K2-K4) relies on this fixture showing every state and mark;
+    the Python twin can drift from the Squirrel code, so the game has to see each one too."""
+    fixtures = Path(__file__).resolve().parent / "fixtures"
+    b = bindings((fixtures / "keyboard_user.bnd").read_text(encoding="latin-1"))
+    files = {}
+    for p in (fixtures / "keyboard_macros").iterdir():
+        text = p.read_text()
+        files[p.name.lower()] = "has" if re.search(r"set psi_chain \S", text) else "empty"
+    seen_states, seen_marks = set(), set()
+    for k in key_table():
+        s = key_state(k["n"], b, files)
+        seen_states.add(s["state"] + ("+" if s["content"] == "has" and s["state"] in ("macro", "free") else ""))
+        seen_marks |= set(s["marks"])
+    assert {"macro+", "macro", "free+", "free", "game", "mod", "reserved", "never", "notoffered"} <= seen_states
+    assert set("=!?") <= seen_marks

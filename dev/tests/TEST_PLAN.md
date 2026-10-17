@@ -50,6 +50,34 @@
 | 21 | Disable psi_autocast, keep the MFD | Console: "psi_autocast isn't loaded"; the MFD still opens |
 | 22 | After any test above, run `condump` | No `[psi_mfd] error` and no `AN ERROR HAS OCCURED` lines from psi_mfd files |
 
+## Keyboard (hotkey picker, 1.2)
+
+Spec: `docs/superpowers/specs/2026-10-16-hotkey-picker-design.md`. Setup, with the game closed:
+
+1. Back up `user.bnd` and the `psi_macros` folder.
+2. Copy `dev/tests/fixtures/keyboard_user.bnd` over `user.bnd`, and `dev/tests/fixtures/keyboard_macros/*` into `psi_macros`. The fixture is the game's default bindings plus one key per state and mark (see the comments at its end).
+3. Start the game; open Options > Controls and leave it, so the game rewrites `user.bnd`; check the fixture's lines are still there (lower-cased).
+4. After testing, quit and copy the backups back.
+
+| # | Do | Expect |
+|---|---|---|
+| K1 | Click Keys; click Table; click a key-name box (not its arrows) | Keyboard / table / keyboard |
+| K2 | Look at the keys | G, F1, F2, keypad / bright (G, F1, F2 double outline); Y teal double outline; unbound keys such as ; and , teal; T, X, K, H grey; keypad * and + blue-grey; Enter, Shift, ` - = dim; Num dim |
+| K3 | Hover T, Y, K, keypad +, Space, and empty space | `T: wpn_setting_toggle (also on o); has a macro: clear T in Controls, run setupPsiMfd.bat`; `Y: free, has a macro: ...`; `K: run psi\t2_localized_pyrokinesis.cmd`; `Keypad +: reserved for psi_autocast cancel`; `Space: +jump; never used for macros`; the legend |
+| K4 | Marks | T `=` and red `!`; X `=` and `?`; keys with movement duplicates `=` |
+| K5 | Pick G, Y and T in turn | Each loads in the editor; Y and T appear in the selector |
+| K6 | Save a macro on Y, then on T | Label line: `Y isn't bound yet: quit and run setupPsiMfd.bat.` / `T is a game key: clear it in Options > Controls, quit, run setupPsiMfd.bat.` |
+| K7 | Click Enter, Num, keypad * | Nothing happens |
+| K8 | With the keyboard open: `<` `>`; T1; wheel over the MFD | Highlight frame moves / table at tier 1 / nothing scrolls |
+| K9 | Tab with the keyboard open, then reopen the MFD | Closed; reopens on the table |
+| K11 | Open Keys | No noticeable delay (subjective) |
+| K12 | `condump` | No `[psi_mfd] error` |
+| K13 | With `keyboard_nomacro_user.bnd`: open the MFD, then pick a free key from Keys | Label line `No macro keys bound: click Keys to pick one`; selector `no keys`, then the picked key |
+| K14 | Disable psi_autocast for the save; open Keys | Keyboard works; K is still a grey game key |
+| K15 | Edit F1's macro without saving; switch to F2 | F2 shows the same unsaved edits |
+| K16 | After K6, pick another key | Label line back to `Macro: click a step...` |
+| K17 | On the smallest window available, save on keypad 5 as a game key | The K6 text fits or is cut cleanly |
+
 ## Results
 
 Record the date, build and outcome in DEVELOPMENT.md under "MFD test results".

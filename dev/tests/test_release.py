@@ -69,7 +69,8 @@ def test_release_zip_contents():
     z = release_zip()
     assert sorted(z.namelist()) == ["mods/psi_autocast_mfd.kpf", "psi/psi_autocast_mfd_LICENSE", "psi/psi_autocast_mfd_README.md"]
     kpf = zipfile.ZipFile(io.BytesIO(z.read("mods/psi_autocast_mfd.kpf")))
-    assert sorted(kpf.namelist()) == ["modinfo.json", "sq_scripts/psi_mfd_data.nut", "sq_scripts/psi_mfd_macros.nut", "sq_scripts/psi_mfd_ui.nut"]
+    assert sorted(kpf.namelist()) == ["modinfo.json", "sq_scripts/psi_mfd_data.nut", "sq_scripts/psi_mfd_keyboard.nut",
+                                     "sq_scripts/psi_mfd_macros.nut", "sq_scripts/psi_mfd_ui.nut"]
 
 
 def test_release_kpf_has_no_dev_output():
@@ -113,7 +114,7 @@ def test_io_calls_are_global():
         assert not re.search(r"(?<![:\w.])file\s*\(", bare), f"{name}: call ::file(...), not file(...)"
 
 
-@pytest.mark.parametrize("name", ["psi_mfd_data.nut", "psi_mfd_macros.nut", "psi_mfd_ui.nut"])
+@pytest.mark.parametrize("name", ["psi_mfd_data.nut", "psi_mfd_keyboard.nut", "psi_mfd_macros.nut", "psi_mfd_ui.nut"])
 def test_brackets_balance(name):
     """WHY: An unbalanced bracket is a compile error that only shows in kexengine.log."""
     bare = strip_strings_and_comments(nut(name))
@@ -124,8 +125,12 @@ def test_brackets_balance(name):
 def test_ui_entry_points_catch_errors():
     """WHY: An exception inside the remaster's UI loop replays the click every frame and stops every script UI."""
     ui = nut("psi_mfd_ui.nut")
-    for where in ['PsiMfdFail("frame update"', 'PsiMfdFail("drawing"', 'PsiMfdFail("row click"', "PsiMfdFail(\"button '"]:
+    for where in ['PsiMfdFail("frame update"', 'PsiMfdFail("drawing"', 'PsiMfdFail("row click"', "PsiMfdFail(\"button '",
+                  'PsiMfdFail("key box click"']:
         assert where in ui, where
+    keyboard = nut("psi_mfd_keyboard.nut")
+    for where in ['PsiMfdFail("keyboard click"', 'PsiMfdFail("keyboard hover"', 'PsiMfdFail("keyboard draw"']:
+        assert where in keyboard, where
 
 
 def test_mfd_defines_every_psi_function_it_calls():
