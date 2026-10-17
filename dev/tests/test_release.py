@@ -505,3 +505,35 @@ def test_bat_offer_replaces_a_bound_punctuation_key(tmp_path):
     assert 'bind ; "run user:/psi_macros\\Macro_semicolon.cmd"' in after
     assert "bind ] wpn_setting_toggle" not in after and "bind ; wpn_setting_toggle" not in after
     assert "bind o wpn_setting_toggle" in after
+
+
+def test_bat_binds_the_starter_psi_keys(tmp_path):
+    """WHY: setupPsiMfd.bat subsumes psi_autocast's starterPsiPowers.bat. G and J become ordinary MFD macro keys
+    (Macro_g.cmd, Macro_j.cmd, the names the MFD uses) preloaded with the starter casts, so the MFD can edit them."""
+    (tmp_path / "user.bnd").write_bytes(b"; empty\r\n")
+    out = run_bat(tmp_path)
+    after = lines(tmp_path)
+    assert 'bind g "run user:/psi_macros\\Macro_g.cmd"' in after
+    assert 'bind j "run user:/psi_macros\\Macro_j.cmd"' in after
+    g = (tmp_path / "psi_macros" / "Macro_g.cmd").read_text().splitlines()
+    j = (tmp_path / "psi_macros" / "Macro_j.cmd").read_text().splitlines()
+    assert g == ["set psi_chain arm,6o", "set psi_draw_ms 800", "set psi_auto_hypo 0", "set psi_chain_gap_ms 500", "summon_obj PsiChain"]
+    assert j[0] == "set psi_chain arm,15q,w500,last" and j[-1] == "summon_obj PsiChain"
+    assert "Starter key: g" in out
+
+
+def test_bat_keeps_an_existing_starter_macro_file(tmp_path):
+    """WHY: A player's own Macro_g.cmd must never be overwritten by the starter cast."""
+    (tmp_path / "user.bnd").write_bytes(b"; empty\r\n")
+    (tmp_path / "psi_macros").mkdir()
+    (tmp_path / "psi_macros" / "Macro_g.cmd").write_text("set psi_chain arm,3q\nsummon_obj PsiChain\n")
+    run_bat(tmp_path)
+    assert (tmp_path / "psi_macros" / "Macro_g.cmd").read_text().startswith("set psi_chain arm,3q")
+    assert 'bind g "run user:/psi_macros\\Macro_g.cmd"' in lines(tmp_path)
+
+
+def test_bat_leaves_a_bound_g_alone(tmp_path):
+    """WHY: As in the starter script, a key the player already bound is never changed."""
+    (tmp_path / "user.bnd").write_bytes(b'bind g "mine"\r\n')
+    run_bat(tmp_path)
+    assert [l for l in lines(tmp_path) if l.startswith("bind g ")] == ['bind g "mine"']
