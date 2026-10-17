@@ -322,7 +322,7 @@ def test_bat_fresh_file(tmp_path):
     macro_keys = [l.split()[1] for l in new if "psi_macros" in l]
     assert macro_keys[:3] == ["a", "b", "c"], "letters come first"
     assert "g" not in macro_keys and "j" not in macro_keys
-    assert len(macro_keys) == 24 + 10 + 12 + 5 + 6
+    assert len(macro_keys) == 24 + 10 + 12 + 5 + 6 + 12
     assert (tmp_path / "user.bnd.before_mfd_1").exists()
     assert "Done." in out
 

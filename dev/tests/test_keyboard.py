@@ -25,7 +25,9 @@ KB = (SCRIPTS / "psi_mfd_keyboard.nut").read_text(encoding="utf-8") if (SCRIPTS 
 
 # Keys the game accepted and rewrote into the author's user.bnd (2026-10-16): proof the names are valid.
 GAME_REWRITTEN = set("abcdefghijklmnopqrstuvwxyz0123456789") | {f"f{i}" for i in range(1, 13)} | {
-    "ins", "del", "home", "end", "pgup", "pgdn", "keypad_minus", "keypad_del", "keypad_ins", "keypad_center", "keypad_slash"}
+    "ins", "del", "home", "end", "pgup", "pgdn", "keypad_minus", "keypad_del", "keypad_ins", "keypad_center", "keypad_slash",
+    # also in the author's game-rewritten user.bnd, as the game's own default bindings:
+    "keypad_home", "keypad_up", "keypad_pgup", "keypad_left", "keypad_right", "keypad_end", "keypad_down", "keypad_pgdn", "up", "down", "left", "right"}
 
 
 def squirrel_string(s):
@@ -50,7 +52,10 @@ def bat_candidates():
 
 # ---- the Python twin of R10-R14 -------------------------------------------------------------------------
 
-PREFIX = "run user:/psi_macros\\"
+MACROS = (SCRIPTS / "psi_mfd_macros.nut").read_text(encoding="utf-8")
+# The twin builds its prefix the way the .nut does, from the .nut's own constant, so a mismatch fails here.
+RUN_PREFIX = squirrel_string(re.search(r'const PSI_MFD_RUN_PREFIX = "((?:\\.|[^"\\])*)"', MACROS).group(1))
+PREFIX = ("run " if '"run " + PSI_MFD_RUN_PREFIX' in MACROS else "") + RUN_PREFIX
 
 
 def bindings(text):
@@ -207,7 +212,7 @@ def test_parse_handles_crlf_quotes_comments_game2_and_duplicates(b):
 @pytest.mark.parametrize("name,state,selectable", [
     ("keypad_plus", "reserved", False), ("enter", "never", False), ("space", "never", False),
     ("keypad_star", "mod", False), ("k", "mod", False), ("g", "macro", True), ("up", "macro", True),
-    ("o", "free", True), ("t", "game", True), ("v", "game", True), ("left", "notoffered", False)])
+    ("o", "free", True), ("t", "game", True), ("v", "game", True), ("numlock", "notoffered", False), ("left", "free", True)])
 def test_states_follow_r11_order(b, name, state, selectable):
     """WHY: R11's order decides overlaps: keypad + and never-list keys win over macro bindings; a hand-bound
     non-candidate macro key is still a macro key; an unsafe file name isn't a macro."""
@@ -250,3 +255,21 @@ def test_consts_come_from_the_same_or_an_earlier_file():
             assert used in visible, f"{path.name} uses {used}, defined in a later file or nowhere"
         for c in own:
             defined[c] = path.name
+
+
+def test_key_colours_stand_out_from_the_background():
+    """WHY: The MFD background (TRAIT) measures about RGB 0.02/0.29/0.24 in game (luminance ~0.23); key outlines
+    and labels darker than ~0.45 were reported as unreadable (2026-10-16)."""
+    for name in ["psiMfdGrey", "psiMfdSlate", "psiMfdFaint"]:
+        r, g, b_ = (float(v) for v in re.search(r"ND\." + name + r" <- \[([^\]]*)\]", KB).group(1).split(","))
+        assert 0.2126 * r + 0.7152 * g + 0.0722 * b_ >= 0.45, name
+
+
+NUMPAD_AND_ARROWS = ["keypad_home", "keypad_up", "keypad_pgup", "keypad_left", "keypad_right", "keypad_end",
+                     "keypad_down", "keypad_pgdn", "up", "down", "left", "right"]
+
+
+def test_keypad_numbers_and_arrows_are_offered():
+    """WHY: User decision 2026-10-16: most players move with WASD + mouse, so keypad numbers and arrows are worth
+    offering. They're default bindings, so they show as game keys until cleared in the Controls menu."""
+    assert all(k in nut_list("psiMfdCandidates") for k in NUMPAD_AND_ARROWS)

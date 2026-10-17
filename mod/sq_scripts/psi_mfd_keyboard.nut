@@ -52,12 +52,14 @@ ND.psiMfdNever <- ["enter", "keypad_enter", "esc", "tab", "space", "backspace", 
 ND.psiMfdCandidates <- ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
 	"u", "v", "w", "x", "y", "z", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "f1", "f2", "f3", "f4", "f5", "f6",
 	"f7", "f8", "f9", "f10", "f11", "f12", "keypad_minus", "keypad_del", "keypad_ins", "keypad_center", "keypad_slash",
-	"ins", "del", "home", "end", "pgup", "pgdn"];
+	"ins", "del", "home", "end", "pgup", "pgdn",
+	"keypad_home", "keypad_up", "keypad_pgup", "keypad_left", "keypad_right", "keypad_end", "keypad_down", "keypad_pgdn", "up", "down", "left", "right"];
 
 // Colours (R15).
-ND.psiMfdGrey <- [0.35, 0.4, 0.38];
-ND.psiMfdSlate <- [0.4, 0.42, 0.55];
-ND.psiMfdFaint <- [0.22, 0.27, 0.25];
+// All well above the MFD background (about 0.02 / 0.29 / 0.24), which made darker greys unreadable.
+ND.psiMfdGrey <- [0.62, 0.68, 0.65];
+ND.psiMfdSlate <- [0.66, 0.7, 0.92];
+ND.psiMfdFaint <- [0.42, 0.5, 0.47];
 ND.psiMfdRed <- [0.8, 0.35, 0.3];
 
 // Other keys (not gamepad) whose command matches name's, sorted.
@@ -180,8 +182,8 @@ function PsiMfdKeyLook(ks) {
 		case "macro": return { edge = ND.psiMfdBright, text = ND.psiMfdBright, double = ks.content == "has" };
 		case "free":
 			if (ks.content == "has")
-				return { edge = ND.psiMfdDim, text = ND.psiMfdText, double = true };
-			return { edge = ND.psiMfdDim, text = ND.psiMfdDim, double = false };
+				return { edge = ND.psiMfdText, text = ND.psiMfdText, double = true };
+			return { edge = ND.psiMfdText, text = ND.psiMfdText, double = false };
 		case "game": return { edge = ND.psiMfdGrey, text = ND.psiMfdGrey, double = false };
 		case "mod":
 		case "reserved": return { edge = ND.psiMfdSlate, text = ND.psiMfdSlate, double = false };

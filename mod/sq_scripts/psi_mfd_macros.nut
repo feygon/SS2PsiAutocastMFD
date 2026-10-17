@@ -115,7 +115,7 @@ function PsiMfdBindings() {
 
 // The macro file a lower-case command runs, if it's "run user:/psi_macros\<plain name>.cmd"; else null.
 function PsiMfdMacroFile(lower) {
-	local prefix = PSI_MFD_RUN_PREFIX.tolower();
+	local prefix = "run " + PSI_MFD_RUN_PREFIX.tolower();
 	if (!startswith(lower, prefix))
 		return null;
 	local rest = lower.slice(prefix.len());

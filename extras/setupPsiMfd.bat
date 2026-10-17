@@ -9,11 +9,11 @@ rem another keyboard or mouse binding, so answering y never loses a command. No 
 rem The mouse wheel is never a macro key; it asks (y/n) before binding it to scroll the MFD. Backs up user.bnd before changing it. Run it with the game closed. Running it again adds only what's missing.
 setlocal EnableDelayedExpansion
 
-rem Plain single keys only, in order: letters, digits, F-keys, then keypad and navigation keys. Never Enter, Esc, Tab, Space, Backspace, the console key, modifiers,
+rem Plain single keys only, in order: letters, digits, F-keys, then keypad and navigation keys, then keypad numbers and arrows. Never Enter, Esc, Tab, Space, Backspace, the console key, modifiers,
 rem Print Screen, Scroll Lock or Pause. Punctuation is left out: , ; = split a batch list, and / can't be a file name.
 rem keypad_star, keypad_minus and keypad_del are proven in game; the rest are names from the game's key table.
 set "OPEN_CANDIDATES=keypad_star keypad_slash"
-set "MACRO_CANDIDATES=a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 keypad_minus keypad_del keypad_ins keypad_center keypad_slash ins del home end pgup pgdn"
+set "MACRO_CANDIDATES=a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 keypad_minus keypad_del keypad_ins keypad_center keypad_slash ins del home end pgup pgdn keypad_home keypad_up keypad_pgup keypad_left keypad_right keypad_end keypad_down keypad_pgdn up down left right"
 rem Every plain keyboard and mouse key the game binds by default (base.kpf, defaults\shock.bnd, game 1.3.4984). These are never offered for replacing.
 set "DEFAULT_KEYS=' - 0 1 2 3 4 5 6 7 8 9 = \ ` a alt b backspace c ctrl d del down e esc f f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 h keypad_center keypad_down keypad_end keypad_home keypad_left keypad_pgdn keypad_pgup keypad_right keypad_up l left m mouse1 mouse2 mouse3 mouse_axisx mouse_axisy mouse_wheel_down mouse_wheel_up n o p pgdn pgup q r right s shift space tab u up w z"
 
