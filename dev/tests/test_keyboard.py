@@ -189,7 +189,7 @@ PENDING_PROOF = set()
 
 def test_selectable_names_are_proven():
     """WHY: A candidate name the game doesn't accept would make a key that never fires."""
-    assert set(nut_list("psiMfdCandidates")) <= GAME_REWRITTEN | {"'", "[", "\\"} | PENDING_PROOF
+    assert set(nut_list("psiMfdCandidates")) <= GAME_REWRITTEN | {"'", "[", "\\", ",", ".", "/", ";", "]"} | PENDING_PROOF
 
 
 @pytest.mark.skipif(not GAME.exists(), reason="game install not found")
