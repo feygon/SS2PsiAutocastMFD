@@ -213,8 +213,12 @@ class PsiMfdKeyboard extends ND.UiBase {
 		local h = int_ref();
 		foreach (k in ND.psiMfdKeyboard) {
 			local r = Rect(k, 0, 0);
-			local text = PsiMfdFit(k.l, r[2] - r[0] - 3);
+			local text = k.l;
 			ShockOverlay.GetStringSize(text, w, h);
+			while (text.len() > 1 && w.tointeger() > r[2] - r[0] - 2) {  // clip, no "...": keys are narrow
+				text = text.slice(0, -1);
+				ShockOverlay.GetStringSize(text, w, h);
+			}
 			m_labels.push({ text = text, dx = (r[2] - r[0] - w.tointeger()) / 2 });
 		}
 	}
