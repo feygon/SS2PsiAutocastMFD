@@ -346,10 +346,15 @@ def test_texts_fit_in_90_characters():
     """WHY: R16/R19: the info and label lines hold about 90 characters at the narrowest panel."""
     legend = re.search(r'"(Bright: macro[^"]*)"', KB).group(1)
     ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
-    game = re.search(r'name \+ "( is a game key[^"]*)"', ui).group(1)
     assert len(legend) <= 90
     longest = max((display_name(k) for k in nut_list("psiMfdCandidates")), key=len)
-    assert len(longest + game) <= 90, longest
+    # The save messages: "Saved. " + name + rest, built in PsiMfdPanel.Save.
+    messages = ["Saved. " + longest + rest for rest in re.findall(r'"Saved\. " \+ name \+ "([^"]*)"', ui)]
+    messages += ["Saved. Restart the game for " + longest + rest
+                 for rest in re.findall(r'"Saved\. Restart the game for " \+ name \+ "([^"]*)"', ui)]
+    assert len(messages) == 3  # game key, free key, pending key
+    for message in messages:
+        assert len(message) <= 90, message
 
 
 def display_name(name):
@@ -382,3 +387,30 @@ def test_in_game_fixture_covers_every_state_and_mark():
         seen_marks |= set(s["marks"])
     assert {"macro+", "macro", "free+", "free", "game", "mod", "reserved", "never", "notoffered"} <= seen_states
     assert set("=!?") <= seen_marks
+
+
+def rebind(text, key, command):
+    """The twin of PsiMfdRebind: drop every plain binding of key, keep everything else, append the new line."""
+    out = [line.strip() for line in text.split("\n") if line.strip() and not line.strip().lower().startswith("bind " + key + " ")]
+    return "\r\n".join(out + ["bind " + key + " " + command]) + "\r\n"
+
+
+def test_rebind_replaces_only_that_key():
+    """WHY: The MFD writes user.bnd itself now (players never edit it by hand); it must change one key and
+    keep every other line, including combos like f1+shift and game2 lines."""
+    before = 'bind o wpn_setting_toggle\r\nbind o+alt foo\r\nbind ox bar\r\ngame2 bind o x\r\nbind O "old"\r\n'
+    after = rebind(before, "o", '"run user:/psi_macros\\Macro_o.cmd"').split("\r\n")
+    assert after[-2] == 'bind o "run user:/psi_macros\\Macro_o.cmd"'
+    assert "bind o wpn_setting_toggle" not in after and 'bind O "old"' not in after
+    assert "bind o+alt foo" in after and "bind ox bar" in after and "game2 bind o x" in after
+    macros = (SCRIPTS / "psi_mfd_macros.nut").read_text(encoding="utf-8")
+    for name in ["PsiMfdRebind", "PsiMfdBindKey"]:
+        assert f"function {name}(" in macros, name
+
+
+def test_first_run_binds_an_open_key_in_game():
+    """WHY: A player should never need the batch file: on the first load without an open key, the MFD binds one
+    (and psi_autocast's cancel on keypad + if free), effective after one restart."""
+    ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
+    assert "function PsiMfdFirstRun(" in ui
+    assert 'PsiMfdFail("first run"' in ui

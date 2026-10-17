@@ -174,9 +174,14 @@ function PsiMfdKeyHover(name, ks, bindings) {
 		return key + ": macro file has no steps";
 	local text = key + ": ";
 	switch (ks.state) {
-		case "macro": text += ks.content == "has" ? "macro (" + ks.file + ")" : "macro key, no macro yet"; break;
-		case "free": text += ks.content == "has" ? "free, has a macro: quit and run setupPsiMfd.bat" : "free"; break;
-		case "game": text += command; break;
+		case "macro":
+			if (name in ND.psiMfdPending)
+				text += "macro key: restart the game to use it";
+			else
+				text += ks.content == "has" ? "macro (" + ks.file + ")" : "macro key, no macro yet";
+			break;
+		case "free": text += ks.content == "has" ? "free, has a macro: Save it here, then restart" : "free: Save a macro here, then restart"; break;
+		case "game": text += command + (ks.marks.find("!") != null ? "" : " (clear it in Controls for a macro)"); break;
 		case "mod": text += PsiMfdModText(b.lower, command); break;
 		case "reserved": text += "reserved for psi_autocast cancel"; break;
 		case "never": text += (b ? command + "; " : "") + "never used for macros"; break;
@@ -185,7 +190,7 @@ function PsiMfdKeyHover(name, ks, bindings) {
 	if (ks.marks.find("=") != null)
 		text += " (also on " + PsiMfdJoin(PsiMfdAlsoOn(name, bindings)) + ")";
 	if (ks.marks.find("!") != null)
-		text += "; has a macro: clear " + key + " in Controls, run setupPsiMfd.bat";
+		text += "; has a macro: clear " + key + " in Controls, Save again, restart";
 	return text;
 }
 

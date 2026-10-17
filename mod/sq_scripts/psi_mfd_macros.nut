@@ -113,6 +113,41 @@ function PsiMfdBindings() {
 	return bindings;
 }
 
+// Players never edit user.bnd by hand: the MFD writes it. The game reads it only at startup, so a binding written
+// here works after the next restart; leaving the Controls menu before then rewrites the file from the game's memory.
+ND.psiMfdBndBackedUp <- false;
+
+// text with every plain binding of key removed and "bind <key> <command>" appended; everything else is kept.
+function PsiMfdRebind(text, key, command) {
+	local out = "";
+	local prefix = "bind " + key + " ";
+	foreach (raw in split(text, "\n")) {
+		local line = strip(raw);
+		if (line != "" && !startswith(line.tolower(), prefix))
+			out += line + "\r\n";
+	}
+	return out + prefix + command + "\r\n";
+}
+
+// Binds key to command in user.bnd, backing the file up to user.bnd.mfd_backup the first time per session.
+// Returns null, or the reason it couldn't.
+function PsiMfdBindKey(key, command) {
+	local text = PsiMfdReadBnd();
+	if (text == null)
+		return "Couldn't read user.bnd";
+	try {
+		if (!ND.psiMfdBndBackedUp) {
+			PsiMfdWriteFile(PSI_MFD_ROOT + "user.bnd.mfd_backup", text);
+			ND.psiMfdBndBackedUp = true;
+		}
+		PsiMfdWriteFile(PSI_MFD_ROOT + "user.bnd", PsiMfdRebind(text, key, command));
+	}
+	catch (e) {
+		return "Couldn't write user.bnd";
+	}
+	return null;
+}
+
 // The macro file a lower-case command runs, if it's "run user:/psi_macros\<plain name>.cmd"; else null.
 function PsiMfdMacroFile(lower) {
 	local prefix = "run " + PSI_MFD_RUN_PREFIX.tolower();

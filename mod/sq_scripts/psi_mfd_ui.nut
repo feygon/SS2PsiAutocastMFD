@@ -546,10 +546,20 @@ class PsiMfdPanel extends ND.UiBase {
 		local name = PsiMfdKeyName(entry.key);
 		SetStatus("Saved for " + name);
 		local state = "state" in entry ? entry.state : "macro";
-		if (state == "free")
-			SetEditLabel(name + " isn't bound yet: quit and run setupPsiMfd.bat.");
+		if (state == "free") {
+			local failed = PsiMfdBindKey(entry.key, "\"run " + PSI_MFD_RUN_PREFIX + entry.file + "\"");
+			if (failed)
+				SetEditLabel("Saved, but " + failed + ": " + name + " isn't bound.");
+			else {
+				entry.state = "pending";
+				ND.psiMfdPending[entry.key] <- true;
+				SetEditLabel("Saved. Restart the game for " + name + " to run this macro.");
+			}
+		}
+		else if (state == "pending")
+			SetEditLabel("Saved. Restart the game for " + name + " to run this macro.");
 		else if (state == "game")
-			SetEditLabel(name + " is a game key: clear it in Options > Controls, quit, run setupPsiMfd.bat.");
+			SetEditLabel("Saved. " + name + " is set in Controls: clear it there, Save here again, then restart.");
 	}
 
 	function SelectedKeyName() {
@@ -662,6 +672,42 @@ ND.psiMfdSeenCursor <- false;  // the cursor has been up since the MFD opened
 ND.psiMfdOpenFor <- 0.0;       // seconds since the MFD opened
 const PSI_MFD_CURSOR_WAIT = 1.0; // the open key asks for the cursor; close if it hasn't come up by then
 ND.psiMfdPanel <- null;
+ND.psiMfdPending <- {};        // keys this session bound in user.bnd: they work after the next restart
+ND.psiMfdFirstRunDone <- false;
+
+// First run (no batch file needed): if no key opens the MFD, bind one - keypad *, keypad /, or the first free
+// candidate - and psi_autocast's cancel on keypad + if that's free. They work after one restart.
+function PsiMfdFirstRun() {
+	local bindings = PsiMfdBindings();
+	if (bindings == null)
+		return;
+	foreach (key, b in bindings) {
+		if (!b.combo && b.lower == "summon_obj psimfd")
+			return;
+	}
+	local openKey = null;
+	foreach (key in ["keypad_star", "keypad_slash"].extend(ND.psiMfdCandidates)) {
+		if (!openKey && !(key in bindings))
+			openKey = key;
+	}
+	if (!openKey) {
+		print("[psi_mfd] no free key to open the MFD: clear one in Options > Controls and restart");
+		return;
+	}
+	local failed = PsiMfdBindKey(openKey, "\"summon_obj PsiMfd\"");
+	if (failed) {
+		print("[psi_mfd] " + failed + ": couldn't set up a key to open the MFD");
+		return;
+	}
+	if (!("keypad_plus" in bindings))
+		PsiMfdBindKey("keypad_plus", "\"run psi\\actions\\Cancel_Macro.cmd\"");
+	local message = "psi_autocast_mfd: restart the game, then press " + PsiMfdKeyName(openKey) + " to open the psi MFD";
+	print("[psi_mfd] " + message);
+	try {
+		ShockGame.AddText(message, "Player", 15000);
+	}
+	catch (e) {}
+}
 
 class PsiMfdHandler {
 	m_name = "PsiMfdHandler";
@@ -681,6 +727,15 @@ class PsiMfdHandler {
 	// Leaving cursor mode (back to shooting) closes the MFD, saved or not, so it doesn't reappear the next time
 	// the cursor comes up for another MFD.
 	function Update(deltaTime) {
+		if (!ND.psiMfdFirstRunDone) {
+			ND.psiMfdFirstRunDone = true;
+			try {
+				PsiMfdFirstRun();
+			}
+			catch (e) {
+				PsiMfdFail("first run", e);
+			}
+		}
 		if (ND.psiMfdOpen && !ND.psiMfdPanel) {
 			ND.psiMfdPanel = PsiMfdPanel();
 			ND.g_PlayerCore.InternalMessage("RegisterRootUi", ND.psiMfdPanel);
