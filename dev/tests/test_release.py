@@ -537,3 +537,30 @@ def test_bat_leaves_a_bound_g_alone(tmp_path):
     (tmp_path / "user.bnd").write_bytes(b'bind g "mine"\r\n')
     run_bat(tmp_path)
     assert [l for l in lines(tmp_path) if l.startswith("bind g ")] == ['bind g "mine"']
+
+
+def test_bat_upgrades_the_starter_scripts_bindings(tmp_path):
+    """WHY: "Subsumes": a player who ran psi_autocast's starterPsiPowers.bat and later adds the MFD runs this script
+    over the top. The starter's exact G and J bindings (any case: the game lower-cases user.bnd) become the same
+    casts as editable macros, without asking, since nothing the player chose is lost."""
+    before = ['bind g "run psi\\T1_Projected_Cryokinesis.cmd"',
+              'bind j "run psi\\chains\\starter_localized_pyrokinesis.cmd"']
+    (tmp_path / "user.bnd").write_bytes(("\r\n".join(before) + "\r\n").encode())
+    out = run_bat(tmp_path)
+    after = lines(tmp_path)
+    assert [l for l in after if l.startswith("bind g ")] == ['bind g "run user:/psi_macros\\Macro_g.cmd"']
+    assert [l for l in after if l.startswith("bind j ")] == ['bind j "run user:/psi_macros\\Macro_j.cmd"']
+    assert (tmp_path / "psi_macros" / "Macro_g.cmd").read_text().splitlines()[0] == "set psi_chain arm,6o"
+    assert (tmp_path / "psi_macros" / "Macro_j.cmd").read_text().splitlines()[0] == "set psi_chain arm,15q,w500,last"
+    assert "Starter key: g" in out and "Starter key: j" in out
+
+
+def test_bat_leaves_other_psi_autocast_bindings_on_g_and_j(tmp_path):
+    """WHY: Only the starter's own two lines are upgraded; another psi_autocast cast on G or J is the player's choice."""
+    before = ['bind g "run psi\\t1_projected_cryokinesis_quickfire.cmd"', 'bind j "run psi\\t1_projected_cryokinesis.cmd"']
+    (tmp_path / "user.bnd").write_bytes(("\r\n".join(before) + "\r\n").encode())
+    run_bat(tmp_path)
+    after = lines(tmp_path)
+    for line in before:
+        assert line in after
+    assert not (tmp_path / "psi_macros" / "Macro_g.cmd").exists()

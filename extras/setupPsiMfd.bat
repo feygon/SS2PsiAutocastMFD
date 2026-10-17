@@ -111,16 +111,12 @@ rem Starter psi keys (what psi_autocast's starterPsiPowers.bat did): G and J, if
 rem (Macro_g.cmd, Macro_j.cmd, as the MFD names them) preloaded with the two starter casts, so the MFD can edit them.
 rem An existing Macro_g.cmd / Macro_j.cmd is kept. G: Projected Cryokinesis (discipline 6), overloading if it helps;
 rem J: Localized Pyrokinesis (15) quickfired, then the previous weapon (psi_autocast's Starter_Localized_Pyrokinesis).
-call :is_free "g"
-if "!FREE!"=="1" (
-    call :starter_macro g "arm,6o"
-    echo Starter key: g  casts Projected Cryokinesis, overloading it automatically.
-)
-call :is_free "j"
-if "!FREE!"=="1" (
-    call :starter_macro j "arm,15q,w500,last"
-    echo Starter key: j  casts Localized Pyrokinesis, then switches back to your previous weapon.
-)
+rem If starterPsiPowers.bat already bound G or J (its exact lines), the key is upgraded to the macro version without
+rem asking: the same cast, now editable in the MFD. Any other binding on G or J is left alone.
+call :starter_key g "arm,6o" "T1_Projected_Cryokinesis.cmd"
+if "!STARTED!"=="1" echo Starter key: g  casts Projected Cryokinesis, overloading it automatically.
+call :starter_key j "arm,15q,w500,last" "chains\\Starter_Localized_Pyrokinesis.cmd"
+if "!STARTED!"=="1" echo Starter key: j  casts Localized Pyrokinesis, then switches back to your previous weapon.
 
 rem Macro keys: every free candidate. Keys already bound (to a macro or anything else) are skipped.
 set MACROS=0
@@ -232,6 +228,23 @@ echo Done. Backup: user.bnd.before_mfd_%N%
 echo Enable psi_autocast and psi_autocast_mfd for your save, then press the open key with the mouse cursor up.
 echo If a key does nothing, start and quit the game, then check user.bnd: if its line is gone, the game didn't accept that key.
 goto :end
+
+rem :starter_key <key> "<chain>" "<starter file, as a findstr pattern>"  sets STARTED=1 when the key gets its starter
+rem macro: because it was free, or because it had starterPsiPowers.bat's own binding (run psi\<starter file>).
+:starter_key
+set STARTED=0
+call :is_free "%~1"
+if "!FREE!"=="1" (
+    call :starter_macro %~1 "%~2"
+    set STARTED=1
+    goto :eof
+)
+rem Two findstr calls, as in :wheel_state; \\ in a findstr /c: string matches one backslash.
+findstr /i /b /c:"bind %~1 " "%BND%" | findstr /i /c:"run psi\\%~3" >nul || goto :eof
+call :starter_macro %~1 "%~2"
+set "REPLACE_ARGS=!REPLACE_ARGS! /c:"bind %~1 ""
+set STARTED=1
+goto :eof
 
 rem :starter_macro <key> "<chain>"  binds key to its macro file and writes the file (MFD format) unless it exists.
 :starter_macro
