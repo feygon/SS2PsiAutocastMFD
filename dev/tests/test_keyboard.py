@@ -182,8 +182,9 @@ def test_candidates_match_the_setup_script():
     assert not set(nut_list("psiMfdNever")) & set(nut_list("psiMfdCandidates"))
 
 
-# Punctuation the game has not yet rewritten into a user.bnd: accepted only after the in-game check (TEST_PLAN).
-PENDING_PROOF = {",", ".", "/", ";", "]"}
+# Punctuation bound by setupPsiMfd.bat and kept by the game when it rewrote user.bnd (2026-10-16, 19:06); macros on
+# ; and / ran to "chain: done". Proven, like the rest.
+PENDING_PROOF = set()
 
 
 def test_selectable_names_are_proven():
