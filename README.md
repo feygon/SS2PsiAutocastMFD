@@ -30,6 +30,8 @@ T1–T5 jump to a tier.
 2. Extract this zip into the **game folder**, the one with `SystemShock2Remastered.exe`. It adds `mods\psi_autocast_mfd.kpf`.
 3. Choose **New Game → Mods**, add **psi_autocast_mfd** (keep psi_autocast), **Apply** and start. Once the first level loads, load your own save, then make a regular save.
 
+**In a new game, wait until you're through training before using the MFD:** macros don't take before then.
+
 ## Set up the keys
 
 Scripts can't bind keys while the game runs, so this happens once, with the game closed, in:
