@@ -283,8 +283,7 @@ def test_disciplines_match_psi_autocast():
 # ---- setupPsiMfd.bat ----------------------------------------------------------------------------------
 
 BAT = REPO / "extras" / "setupPsiMfd.bat"
-NEVER = ["enter", "keypad_enter", "esc", "tab", "space", "bs", "backspace", "`", "-", "=", "[", "]", "\\", ";", "'",
-         ",", ".", "/", "mouse_wheel_up", "mouse_wheel_down"]
+NEVER = ["enter", "keypad_enter", "esc", "tab", "space", "bs", "backspace", "`", "-", "=", "mouse_wheel_up", "mouse_wheel_down"]
 
 
 def run_bat(folder, answers=""):
@@ -322,7 +321,7 @@ def test_bat_fresh_file(tmp_path):
     macro_keys = [l.split()[1] for l in new if "psi_macros" in l]
     assert macro_keys[:3] == ["a", "b", "c"], "letters come first"
     assert "g" not in macro_keys and "j" not in macro_keys
-    assert len(macro_keys) == 24 + 10 + 12 + 5 + 6 + 12
+    assert len(macro_keys) == 24 + 10 + 12 + 5 + 6 + 12 + 8
     assert (tmp_path / "user.bnd.before_mfd_1").exists()
     assert "Done." in out
 
@@ -474,3 +473,30 @@ def test_bat_n_keeps_the_binding(tmp_path):
     run_bat(tmp_path, "n\n")
     assert 'bind t wpn_setting_toggle' in lines(tmp_path)
     assert not [l for l in lines(tmp_path) if "Macro_t" in l]
+
+
+def test_bat_binds_punctuation_with_word_file_names(tmp_path):
+    """WHY: , ; = split a batch list and / \\ can't be file names, so the script names punctuation by words;
+    the bind line must still use the real key, and a backslash must survive findstr's escaping."""
+    (tmp_path / "user.bnd").write_bytes(b'bind [ "use_obj detox patch"\r\n')
+    run_bat(tmp_path)
+    after = lines(tmp_path)
+    for key, word in [(",", "comma"), (".", "period"), ("/", "slash"), (";", "semicolon"), ("'", "apostrophe"),
+                      ("]", "rbracket"), ("\\", "backslash")]:
+        assert f'bind {key} "run user:/psi_macros\\Macro_{word}.cmd"' in after, key
+    assert 'bind [ "use_obj detox patch"' in after
+    assert not [l for l in after if "Macro_lbracket" in l], "[ was bound, so it's not free"
+
+
+def test_bat_offer_replaces_a_bound_punctuation_key(tmp_path):
+    """WHY: An offered punctuation key goes through the word file name and the findstr filter that removes its old
+    line; ] and ; are not game defaults, and their command is also on O (a default key), so both are offered."""
+    before = ["bind o wpn_setting_toggle", "bind ] wpn_setting_toggle", "bind ; wpn_setting_toggle"]
+    (tmp_path / "user.bnd").write_bytes(("\r\n".join(before) + "\r\n").encode())
+    out = run_bat(tmp_path, "y\ny\nn\n")
+    after = lines(tmp_path)
+    assert re.findall(r"Use (\S+) as a macro key\?", out) == [";", "]"]
+    assert 'bind ] "run user:/psi_macros\\Macro_rbracket.cmd"' in after
+    assert 'bind ; "run user:/psi_macros\\Macro_semicolon.cmd"' in after
+    assert "bind ] wpn_setting_toggle" not in after and "bind ; wpn_setting_toggle" not in after
+    assert "bind o wpn_setting_toggle" in after

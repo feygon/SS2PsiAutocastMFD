@@ -46,8 +46,20 @@ def nut_list(name):
     return [squirrel_string(s) for s in re.findall(r'"((?:\\.|[^"\\])*)"', found.group(1))]
 
 
+def file_words():
+    found = re.search(r"ND\.psiMfdFileWords <- \{(.*?)\};", KB, re.S)
+    assert found, "ND.psiMfdFileWords not found"
+    return {squirrel_string(k): w for k, w in re.findall(r'\["((?:\\.|[^"\\])*)"\] = "(\w+)"', found.group(1))}
+
+
+def macro_name(name):
+    return "Macro_" + file_words().get(name, name) + ".cmd"
+
+
 def bat_candidates():
-    return re.search(r'set "MACRO_CANDIDATES=([^"]*)"', BAT.read_text()).group(1).split()
+    """The script's list with its punctuation words turned back into key names."""
+    words = {w: k for k, w in file_words().items()}
+    return [words.get(c, c) for c in re.search(r'set "MACRO_CANDIDATES=([^"]*)"', BAT.read_text()).group(1).split()]
 
 
 # ---- the Python twin of R10-R14 -------------------------------------------------------------------------
@@ -107,16 +119,16 @@ def key_state(name, b, file_state):
         s["state"] = "mod"
     elif macro_file(lower):
         s.update(state="macro", selectable=True, file=macro_file(lower))
-    elif lower.startswith("summon_obj psimfdwheel") or "cancel_macro" in lower or lower.startswith("run psi\\"):
+    elif lower.startswith("summon_obj psimfdwheel") or "cancel_macro" in lower:
         s["state"] = "mod"
     elif candidate:
-        s.update(state="game" if bind else "free", selectable=True, file="Macro_" + name + ".cmd")
+        s.update(state="game" if bind else "free", selectable=True, file=macro_name(name))
     else:
         s["state"] = "notoffered"
     if s["state"] == "macro":
         s["contentFile"] = s["file"]
     elif candidate:
-        s["contentFile"] = "Macro_" + name + ".cmd"
+        s["contentFile"] = macro_name(name)
     if s["contentFile"]:
         s["content"] = file_state.get(s["contentFile"].lower(), "missing")
     if s["state"] in ("game", "mod") and also_on(name, b):
@@ -170,9 +182,13 @@ def test_candidates_match_the_setup_script():
     assert not set(nut_list("psiMfdNever")) & set(nut_list("psiMfdCandidates"))
 
 
+# Punctuation the game has not yet rewritten into a user.bnd: accepted only after the in-game check (TEST_PLAN).
+PENDING_PROOF = {",", ".", "/", ";", "]"}
+
+
 def test_selectable_names_are_proven():
     """WHY: A candidate name the game doesn't accept would make a key that never fires."""
-    assert set(nut_list("psiMfdCandidates")) <= GAME_REWRITTEN
+    assert set(nut_list("psiMfdCandidates")) <= GAME_REWRITTEN | {"'", "[", "\\"} | PENDING_PROOF
 
 
 @pytest.mark.skipif(not GAME.exists(), reason="game install not found")
@@ -211,7 +227,7 @@ def test_parse_handles_crlf_quotes_comments_game2_and_duplicates(b):
 
 @pytest.mark.parametrize("name,state,selectable", [
     ("keypad_plus", "reserved", False), ("enter", "never", False), ("space", "never", False),
-    ("keypad_star", "mod", False), ("k", "mod", False), ("g", "macro", True), ("up", "macro", True),
+    ("keypad_star", "mod", False), ("k", "game", True), ("g", "macro", True), ("up", "macro", True),
     ("o", "free", True), ("t", "game", True), ("v", "game", True), ("numlock", "notoffered", False), ("left", "free", True)])
 def test_states_follow_r11_order(b, name, state, selectable):
     """WHY: R11's order decides overlaps: keypad + and never-list keys win over macro bindings; a hand-bound
@@ -273,3 +289,21 @@ def test_keypad_numbers_and_arrows_are_offered():
     """WHY: User decision 2026-10-16: most players move with WASD + mouse, so keypad numbers and arrows are worth
     offering. They're default bindings, so they show as game keys until cleared in the Controls menu."""
     assert all(k in nut_list("psiMfdCandidates") for k in NUMPAD_AND_ARROWS)
+
+
+PUNCTUATION = [",", ".", "/", ";", "'", "[", "]", "\\"]
+
+
+def test_punctuation_keys_are_offered_with_file_safe_names():
+    """WHY: User decision 2026-10-16: , . / ; ' [ ] \\ can hold macros. / and \\ can't be in a file name, so every
+    punctuation key's macro file uses a word (Macro_comma.cmd), the same word the setup script uses."""
+    for k in PUNCTUATION:
+        assert k in nut_list("psiMfdCandidates") and k not in nut_list("psiMfdNever"), k
+        assert re.fullmatch(r"Macro_[a-z]+\.cmd", macro_name(k)), k
+    assert not {"`", "-", "="} & set(nut_list("psiMfdCandidates"))
+
+
+def test_psi_autocast_keys_are_ordinary_game_keys(b):
+    """WHY: User decision 2026-10-16: a key running a psi_autocast script isn't reserved; it's a game key."""
+    s = key_state("k", b, {})
+    assert (s["state"], s["selectable"], s["file"]) == ("game", True, "Macro_k.cmd")

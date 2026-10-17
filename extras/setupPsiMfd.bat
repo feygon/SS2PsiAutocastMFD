@@ -10,10 +10,12 @@ rem The mouse wheel is never a macro key; it asks (y/n) before binding it to scr
 setlocal EnableDelayedExpansion
 
 rem Plain single keys only, in order: letters, digits, F-keys, then keypad and navigation keys, then keypad numbers and arrows. Never Enter, Esc, Tab, Space, Backspace, the console key, modifiers,
-rem Print Screen, Scroll Lock or Pause. Punctuation is left out: , ; = split a batch list, and / can't be a file name.
+rem Print Screen, Scroll Lock or Pause, and not ` - =. The punctuation keys , . / ; ' [ ] \ are listed by word (comma, ...):
+rem , ; = split a batch list, and / \ can't be in a file name; :key_of turns a word back into the key, and the
+rem macro file keeps the word (Macro_comma.cmd), as the MFD expects.
 rem keypad_star, keypad_minus and keypad_del are proven in game; the rest are names from the game's key table.
 set "OPEN_CANDIDATES=keypad_star keypad_slash"
-set "MACRO_CANDIDATES=a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 keypad_minus keypad_del keypad_ins keypad_center keypad_slash ins del home end pgup pgdn keypad_home keypad_up keypad_pgup keypad_left keypad_right keypad_end keypad_down keypad_pgdn up down left right"
+set "MACRO_CANDIDATES=a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 keypad_minus keypad_del keypad_ins keypad_center keypad_slash ins del home end pgup pgdn keypad_home keypad_up keypad_pgup keypad_left keypad_right keypad_end keypad_down keypad_pgdn up down left right comma period slash semicolon apostrophe lbracket rbracket backslash"
 rem Every plain keyboard and mouse key the game binds by default (base.kpf, defaults\shock.bnd, game 1.3.4984). These are never offered for replacing.
 set "DEFAULT_KEYS=' - 0 1 2 3 4 5 6 7 8 9 = \ ` a alt b backspace c ctrl d del down e esc f f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 h keypad_center keypad_down keypad_end keypad_home keypad_left keypad_pgdn keypad_pgup keypad_right keypad_up l left m mouse1 mouse2 mouse3 mouse_axisx mouse_axisy mouse_wheel_down mouse_wheel_up n o p pgdn pgup q r right s shift space tab u up w z"
 
@@ -73,8 +75,9 @@ if not errorlevel 1 (
     set "OPEN_KEY="
     for %%K in (%OPEN_CANDIDATES% %MACRO_CANDIDATES%) do (
         if not defined OPEN_KEY (
-            call :is_free %%K
-            if "!FREE!"=="1" set "OPEN_KEY=%%K"
+            call :key_of %%K
+            call :is_free "!KEY!"
+            if "!FREE!"=="1" set "OPEN_KEY=!KEY!"
         )
     )
     if defined OPEN_KEY (
@@ -106,29 +109,32 @@ if errorlevel 1 (
 rem Macro keys: every free candidate. Keys already bound (to a macro or anything else) are skipped.
 set MACROS=0
 for %%K in (%MACRO_CANDIDATES%) do (
-    call :is_free %%K
+    call :key_of %%K
+    call :is_free "!KEY!"
     if "!FREE!"=="1" (
-        >> "%NEW_BND%" echo bind %%K "run user:/psi_macros\Macro_%%K.cmd"
-        set "TAKEN=!TAKEN!%%K "
+        >> "%NEW_BND%" echo bind !KEY! "run user:/psi_macros\Macro_%%K.cmd"
+        set "TAKEN=!TAKEN!!KEY! "
         set /a MACROS+=1
         set /a ADDED+=1
-        echo Macro key: %%K
+        echo Macro key: !KEY!
     )
 )
 
 rem Bound keys that can be given up without losing a command: not bound by the game's defaults, not one of these mods'
 rem keys, and the same command is on another keyboard or mouse binding (gamepad bindings don't count; neither do other
-rem offered keys, so saying y to all of them still leaves every command on a key). Output: key|command|other keys.
-powershell -NoProfile -Command "$cand=$env:MACRO_CANDIDATES -split ' '; $def=$env:DEFAULT_KEYS -split ' '; $b=@{}; foreach($l in Get-Content -LiteralPath $env:BND){ $p=$l.Trim() -split '\s+',3; if($p.Count -eq 3 -and $p[0] -eq 'bind'){ $b[$p[1]]=$p[2].Trim() } }; $offer=@($cand | Where-Object { $b.ContainsKey($_) -and $def -notcontains $_ -and $b[$_] -notmatch 'psi_macros|summon_obj psimfd|cancel_macro' }); foreach($k in $offer){ $o=@($b.Keys | Where-Object { $_ -ne $k -and $_ -notlike 'joy*' -and $offer -notcontains $_ -and $b[$_] -eq $b[$k] } | Sort-Object); if($o.Count){ $k+'|'+$b[$k]+'|'+($o -join ' ') } }" > "%OFFERS%" 2>nul
-for /f "usebackq tokens=1,2,* delims=|" %%A in ("%OFFERS%") do (
+rem offered keys, so saying y to all of them still leaves every command on a key). Output: key|word|command|other keys.
+powershell -NoProfile -Command "$map=@{comma=',';period='.';slash='/';semicolon=';';apostrophe=[string][char]39;lbracket='[';rbracket=']';backslash='\'}; $word=@{}; $cand=@($env:MACRO_CANDIDATES -split ' ' | ForEach-Object { $k=$(if($map.ContainsKey($_)){$map[$_]}else{$_}); $word[$k]=$_; $k }); $def=$env:DEFAULT_KEYS -split ' '; $b=@{}; foreach($l in Get-Content -LiteralPath $env:BND){ $p=$l.Trim() -split '\s+',3; if($p.Count -eq 3 -and $p[0] -eq 'bind'){ $b[$p[1]]=$p[2].Trim() } }; $offer=@($cand | Where-Object { $b.ContainsKey($_) -and $def -notcontains $_ -and $b[$_] -notmatch 'psi_macros|summon_obj psimfd|cancel_macro' }); foreach($k in $offer){ $o=@($b.Keys | Where-Object { $_ -ne $k -and $_ -notlike 'joy*' -and $offer -notcontains $_ -and $b[$_] -eq $b[$k] } | Sort-Object); if($o.Count){ $k+'|'+$word[$k]+'|'+$b[$k]+'|'+($o -join ' ') } }" > "%OFFERS%" 2>nul
+rem eol=|: the default eol is ; and would skip the line for the ; key.
+for /f "usebackq eol=| tokens=1,2,3,* delims=|" %%A in ("%OFFERS%") do (
     set "ANSWER="
-    set /p "ANSWER=Use %%A as a macro key? It runs %%B, which is also on %%C. (y/n) "
+    set /p "ANSWER=Use %%A as a macro key? It runs %%C, which is also on %%D. (y/n) "
     if /i "!ANSWER!"=="y" (
-        >> "%NEW_BND%" echo bind %%A "run user:/psi_macros\Macro_%%A.cmd"
-        set "REPLACE_ARGS=!REPLACE_ARGS! /c:"bind %%A ""
+        >> "%NEW_BND%" echo bind %%A "run user:/psi_macros\Macro_%%B.cmd"
+        call :pattern_of "%%A"
+        set "REPLACE_ARGS=!REPLACE_ARGS! /c:"bind !PAT! ""
         set /a MACROS+=1
         set /a ADDED+=1
-        echo Macro key: %%A ^(replaces %%B^)
+        echo Macro key: %%A ^(replaces %%C^)
     )
 )
 del "%OFFERS%" 2>nul
@@ -211,10 +217,30 @@ echo Enable psi_autocast and psi_autocast_mfd for your save, then press the open
 echo If a key does nothing, start and quit the game, then check user.bnd: if its line is gone, the game didn't accept that key.
 goto :end
 
-rem :is_free <key>  sets FREE=1 when user.bnd has no plain binding for <key> and this run hasn't used it.
+rem :key_of <candidate>  sets KEY to the key name in user.bnd: punctuation candidates are words.
+:key_of
+set "KEY=%~1"
+if "%~1"=="comma" set "KEY=,"
+if "%~1"=="period" set "KEY=."
+if "%~1"=="slash" set "KEY=/"
+if "%~1"=="semicolon" set "KEY=;"
+if "%~1"=="apostrophe" set "KEY='"
+if "%~1"=="lbracket" set "KEY=["
+if "%~1"=="rbracket" set "KEY=]"
+if "%~1"=="backslash" set "KEY=\"
+goto :eof
+
+rem :pattern_of "<key>"  sets PAT to the key as a findstr /c: string: findstr reads \ as an escape, so \ is \\.
+:pattern_of
+set "PAT=%~1"
+if "%~1"=="\" set "PAT=\\"
+goto :eof
+
+rem :is_free "<key>"  sets FREE=1 when user.bnd has no plain binding for <key> and this run hasn't used it.
 :is_free
 set FREE=1
-findstr /i /b /c:"bind %~1 " "%BND%" >nul
+call :pattern_of "%~1"
+findstr /i /b /c:"bind !PAT! " "%BND%" >nul
 if not errorlevel 1 set FREE=0
 if not "!TAKEN: %~1 =!"=="!TAKEN!" set FREE=0
 goto :eof

@@ -45,15 +45,26 @@ ND.psiMfdKeyboard <- [
 ];
 
 // C1: never macro keys. keypad_plus is listed for completeness; R11 checks it first as Reserved.
+// , . / ; ' [ ] \ can hold macros (user decision 2026-10-16); ` - = stay out.
 ND.psiMfdNever <- ["enter", "keypad_enter", "esc", "tab", "space", "backspace", "caps_lock", "shift", "ctrl", "alt",
-	"keypad_plus", "`", "-", "=", "[", "]", "\\", ";", "'", ",", ".", "/"];
+	"keypad_plus", "`", "-", "="];
 
 // Exactly setupPsiMfd.bat's MACRO_CANDIDATES (a test keeps them equal): keys the script can bind later.
 ND.psiMfdCandidates <- ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
 	"u", "v", "w", "x", "y", "z", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "f1", "f2", "f3", "f4", "f5", "f6",
 	"f7", "f8", "f9", "f10", "f11", "f12", "keypad_minus", "keypad_del", "keypad_ins", "keypad_center", "keypad_slash",
 	"ins", "del", "home", "end", "pgup", "pgdn",
-	"keypad_home", "keypad_up", "keypad_pgup", "keypad_left", "keypad_right", "keypad_end", "keypad_down", "keypad_pgdn", "up", "down", "left", "right"];
+	"keypad_home", "keypad_up", "keypad_pgup", "keypad_left", "keypad_right", "keypad_end", "keypad_down", "keypad_pgdn", "up", "down", "left", "right",
+	",", ".", "/", ";", "'", "[", "]", "\\"];
+
+// Punctuation keys' macro files use a word (/ and \ can't be in a file name); setupPsiMfd.bat uses the same words.
+ND.psiMfdFileWords <- { [","] = "comma", ["."] = "period", ["/"] = "slash", [";"] = "semicolon", ["'"] = "apostrophe",
+	["["] = "lbracket", ["]"] = "rbracket", ["\\"] = "backslash" };
+
+// The macro file a free or game key gets: Macro_<key>.cmd, or Macro_<word>.cmd for punctuation.
+function PsiMfdMacroName(name) {
+	return "Macro_" + (name in ND.psiMfdFileWords ? ND.psiMfdFileWords[name] : name) + ".cmd";
+}
 
 // Colours (R15).
 // All well above the MFD background (about 0.02 / 0.29 / 0.24), which made darker greys unreadable.
@@ -74,8 +85,10 @@ function PsiMfdAlsoOn(name, bindings) {
 	return others;
 }
 
+// Keys these mods need (the wheel, psi_autocast's cancel). Keys running other psi_autocast scripts are ordinary
+// game keys (user decision 2026-10-16).
 function PsiMfdIsModCommand(lower) {
-	return startswith(lower, "summon_obj psimfdwheel") || lower.find("cancel_macro") != null || startswith(lower, "run psi\\");
+	return startswith(lower, "summon_obj psimfdwheel") || lower.find("cancel_macro") != null;
 }
 
 // R11 state, R12 content and R14 marks for one key. fileState: lower-case file name -> "has" / "empty" / "missing".
@@ -103,7 +116,7 @@ function PsiMfdKeyState(name, bindings, fileState) {
 	else if (candidate) {
 		s.state = b ? "game" : "free";
 		s.selectable = true;
-		s.file = "Macro_" + name + ".cmd";
+		s.file = PsiMfdMacroName(name);
 	}
 	else
 		s.state = "notoffered";
@@ -116,7 +129,7 @@ function PsiMfdAddContent(s, name, candidate, fileState) {
 	if (s.state == "macro")
 		s.contentFile = s.file;
 	else if (candidate)
-		s.contentFile = "Macro_" + name + ".cmd";
+		s.contentFile = PsiMfdMacroName(name);
 	if (s.contentFile) {
 		local lower = s.contentFile.tolower();
 		s.content = lower in fileState ? fileState[lower] : "missing";
