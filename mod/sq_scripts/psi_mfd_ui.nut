@@ -34,7 +34,10 @@ function PsiMfdLayoutColumns(panelWidth) {
 
 // Readable names for user.bnd keys.
 ND.psiMfdKeyNames <- { keypad_minus = "Keypad -", keypad_plus = "Keypad +", keypad_star = "Keypad *", keypad_slash = "Keypad /",
-	keypad_del = "Keypad Del", keypad_ins = "Keypad Ins", keypad_center = "Keypad 5", keypad_enter = "Keypad Enter" };
+	keypad_del = "Keypad Del", keypad_ins = "Keypad Ins", keypad_center = "Keypad 5", keypad_enter = "Keypad Enter",
+	keypad_end = "Keypad 1", keypad_down = "Keypad 2", keypad_pgdn = "Keypad 3", keypad_left = "Keypad 4",
+	keypad_right = "Keypad 6", keypad_home = "Keypad 7", keypad_up = "Keypad 8", keypad_pgup = "Keypad 9",
+	up = "Up", down = "Down", left = "Left", right = "Right" };
 
 function PsiMfdKeyName(key) {
 	return key in ND.psiMfdKeyNames ? ND.psiMfdKeyNames[key] : key.toupper();

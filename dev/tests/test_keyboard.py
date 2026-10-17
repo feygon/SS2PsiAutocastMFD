@@ -348,7 +348,22 @@ def test_texts_fit_in_90_characters():
     ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
     game = re.search(r'name \+ "( is a game key[^"]*)"', ui).group(1)
     assert len(legend) <= 90
-    assert len("Keypad Del" + game) <= 90
+    longest = max((display_name(k) for k in nut_list("psiMfdCandidates")), key=len)
+    assert len(longest + game) <= 90, longest
+
+
+def display_name(name):
+    """The twin of PsiMfdKeyName: ND.psiMfdKeyNames, else the key upper-cased."""
+    ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
+    body = re.search(r"ND\.psiMfdKeyNames <- \{(.*?)\};", ui, re.S).group(1)
+    names = dict(re.findall(r'(\w+) = "([^"]*)"', body))
+    return names.get(name, name.upper())
+
+
+def test_every_candidate_has_a_readable_name():
+    """WHY: The selector, hover line and save message show this name; KEYPAD_HOME tells a player nothing."""
+    for k in nut_list("psiMfdCandidates"):
+        assert "_" not in display_name(k) and len(display_name(k)) <= 10, (k, display_name(k))
 
 
 def test_in_game_fixture_covers_every_state_and_mark():
