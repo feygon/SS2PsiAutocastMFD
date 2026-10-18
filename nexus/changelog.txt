@@ -1,0 +1,23 @@
+Changelog for Nexus (Mod page > Logs, one entry per version). Plain text: one change per line.
+
+1.2
+Keyboard picker: click Keys (or the key name) to choose a key from a keyboard showing what every key does.
+Key colours: macro key, free, set by the game, used by these mods, never used for macros. A double outline means the key has a saved macro.
+Marks: = the key's job is also on another key; red ! a saved macro on a key still set to something else; ? an empty macro file.
+The MFD binds its own keys: on the first load without an open key it binds keypad * (and keypad + to psi_autocast's cancel, if free).
+Saving a macro on a free key binds that key; restart once and it runs the macro.
+Keys the game uses stay with Options > Controls: clear one there, then save the macro again and restart.
+user.bnd is backed up as user.bnd.mfd_backup before the MFD changes it.
+More keys can hold macros: keypad numbers, arrows, and the comma, period, slash, semicolon, apostrophe, bracket and backslash keys.
+Keys running psi_autocast scripts are ordinary keys, not reserved.
+setupPsiMfd.bat gives G and J psi_autocast's two starter casts as editable macros, and takes over the bindings made by psi_autocast's own starter script.
+Readable names for keypad keys and arrows.
+
+1.1
+Works without psi_autocast: the table and editor work, and the status line says macros won't run.
+Closes when you leave cursor mode.
+Optional: the mouse wheel scrolls the table when the cursor is over the MFD, and switches weapons everywhere else.
+setupPsiMfd.bat asks (y/n) before using a key you've already bound, and before binding the wheel.
+
+1.0
+First release.

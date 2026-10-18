@@ -18,26 +18,11 @@ The numbers are read from the running game, so they follow SCP if you use it. Cy
 [line]
 [size=4][b]Building macros[/b][/size]
 [list]
-[*]Pick a key with the [b]<[/b] [b]>[/b] arrows, or click [b]Keys[/b] (or the key name) to choose it from a keyboard.[/*]
-[*]Click a discipline, or its [b]+Overload[/b] / [b]+Quick[/b] button, to add a cast.[/*]
-[*]Add psi hypos, change the waits between steps, and finish with a switch back to your previous weapon or to any weapon.[/*]
-[*]Options: draw the psi amp first, how long to wait for it, and auto psi hypo.[/*]
+[*]Pick a key, or click [b]Keys[/b] to choose one from a keyboard that shows what every key does.[/*]
+[*]Click disciplines to add casts; add psi hypos, waits and a finishing weapon switch.[/*]
 [*][b]Save[/b], close the MFD, and press the key. psi_autocast runs the macro.[/*]
 [/list]
-Scroll the table with the Up / Dn buttons, or jump to a tier with T1-T5. With the optional wheel lines (below), the mouse wheel scrolls it too when the cursor is over the MFD, and still switches weapons everywhere else.
-
-[line]
-[size=4][b]The keyboard[/b][/size]
-[b]Keys[/b] swaps the table for a keyboard. Hover a key to see what it does; click one to pick it.
-[list]
-[*][b]Bright teal[/b]: a macro key. A double outline means it has a saved macro (or runs a psi_autocast script).[/*]
-[*][b]Teal[/b]: free, no binding yet.[/*]
-[*][b]Grey[/b]: set by the game in Options > Controls.[/*]
-[*][b]Blue-grey[/b]: used by these mods (the MFD's open key, keypad + for psi_autocast's cancel).[/*]
-[*][b]Dim[/b]: never used for macros (Enter, Esc, Tab, Space, Backspace, Shift, Ctrl, Alt, ` - =).[/*]
-[/list]
-Marks: [b]=[/b] the key's job is also on another key; red [b]![/b] it has a saved macro but is still set to something else; [b]?[/b] its macro file has no steps.
-Letters, digits, F-keys, the navigation keys (i.e. home, ins, end), keypad numbers, arrows, and the comma, period, slash, semicolon, apostrophe, bracket and backslash keys can all hold macros.
+Saving on a key that isn't a macro key yet binds it for you; the MFD tells you when that needs a restart. Keys the game uses stay with the game's Controls menu.
 
 [line]
 [size=4][b]Setup[/b][/size]
@@ -45,31 +30,21 @@ Letters, digits, F-keys, the navigation keys (i.e. home, ins, end), keypad numbe
 [*]Install and enable [url=https://www.nexusmods.com/systemshock225thanniversaryremaster/mods/20]psi_autocast[/url] 1.2 or later.[/*]
 [*]Extract this mod into the [b]game folder[/b], the one with [b]SystemShock2Remastered.exe[/b] (not the save folder). It adds [i]mods\psi_autocast_mfd.kpf[/i].[/*]
 [*]New Game → Mods → add [b]psi_autocast_mfd[/b] (keep psi_autocast) → Apply → start, then load your save and make a regular save.[/*]
-[*]On that first load, the MFD binds keypad * to open it (or the next free key), and keypad + to psi_autocast's cancel if that's free. Restart the game once when it tells you to, then press keypad *.[/*]
+[*]On that first load the MFD binds keypad * to open it. Restart the game once when it tells you to, then press keypad *.[/*]
 [*][b]In a new game, wait until you're through training before using the MFD:[/b] macros don't take before then.[/*]
 [/list]
-[size=4][b]Keys[/b][/size]
-[list]
-[*][b]Saving on a free key[/b] binds it for you: "Saved. Restart the game for O to run this macro."[/*]
-[*][b]Saving on a key the game uses[/b]: clear it in Options > Controls first, then Save again and restart. The MFD never takes a key away from the game's own controls.[/*]
-[*][b]Saving on a macro key[/b] works on the next keypress.[/*]
-[/list]
-The game reads key bindings only when it starts, which is why a new key needs one restart. Before the MFD changes [i]user.bnd[/i], it backs it up as [i]user.bnd.mfd_backup[/i].
-
 If you'd rather set keys up yourself, you still can:
 
 Setup Script (GitHub only):
 [spoiler][size=4][b]The setup script[/b][/size]
-[url=https://github.com/feygon/SS2PsiAutocastMFD/releases/latest]setupPsiMfd.bat[/url], from the GitHub release, writes the [i]user.bnd[/i] lines for many keys at once. Run it with the game closed. It:
+[url=https://github.com/feygon/SS2PsiAutocastMFD/releases/latest]setupPsiMfd.bat[/url], from the GitHub release, sets up many keys at once. Run it with the game closed. It:
 [list]
-[*]binds an open key to the MFD: default keypad *, or another free key;[/*]
-[*]binds keypad + to psi_autocast's cancel key, if it's free;[/*]
-[*]gives G and J psi_autocast's two starter casts, as macros you can edit (it also takes over the starter keys from psi_autocast's own starter script);[/*]
-[*]binds a macro key on every plain key you haven't bound: letters, digits, F-keys, keypad and navigation keys (i.e. home, ins, end), keypad numbers, arrows and punctuation;[/*]
-[*]asks you, one key at a time (y/n), about a key you've already bound only if the game doesn't bind it by default and its command is also on another key, so saying yes never loses a command; it changes no other binding;[/*]
-[*]never uses Enter, Esc, Tab, Space, Backspace, modifier keys, or ` - =;[/*]
-[*]asks (y/n) whether the mouse wheel should scroll the MFD, only while the wheel has the game's default bindings or none;[/*]
-[*]backs up [i]user.bnd[/i] first, lists every key it bound, and adds only what's missing if you run it again.[/*]
+[*]binds keypad * to open the MFD, and keypad + to psi_autocast's cancel if it's free;[/*]
+[*]gives G and J psi_autocast's two starter casts, as macros you can edit;[/*]
+[*]makes every free key a macro key;[/*]
+[*]asks (y/n) about bound keys whose job is also on another key, and about letting the mouse wheel scroll the MFD;[/*]
+[*]never uses reserved keys;[/*]
+[*]backs up [i]user.bnd[/i] first, and adds only what's missing if you run it again.[/*]
 [/list]
 [/spoiler]
 
@@ -82,7 +57,6 @@ One key opens and closes the MFD:
 Each macro key runs its own file. Add one line per key you want, changing the key and the file name together:
 [code]bind keypad_minus "run user:/psi_macros\Macro_keypad_minus.cmd"
 bind keypad_del "run user:/psi_macros\Macro_keypad_del.cmd"[/code]
-The MFD finds your macro keys by reading these lines, so every key you add this way appears in its selector.
 
 Optional: the mouse wheel scrolls the MFD when the cursor is over it, and switches weapons everywhere else. Replace the two [i]mouse_wheel[/i] lines with:
 [code]bind mouse_wheel_up "summon_obj PsiMfdWheelUp"
@@ -91,11 +65,7 @@ In a save without psi_autocast_mfd enabled, the wheel then doesn't switch weapon
 
 [line]
 [size=4][b]What it writes[/b][/size]
-[list]
-[*][b]Macros[/b]: small text files in [i]Saved Games\Nightdive Studios\System Shock 2 Remastered\psi_macros\[/i], one per key, in the same format the psi_autocast Macro Builder writes.[/*]
-[*][b]Key bindings[/b]: [i]user.bnd[/i], only when you save on a free key or on the first load without an open key, backed up first as [i]user.bnd.mfd_backup[/i].[/*]
-[/list]
-It doesn't touch the game folder.
+Macros go in [i]Saved Games\Nightdive Studios\System Shock 2 Remastered\psi_macros\[/i], one small text file per key. Key bindings go in [i]user.bnd[/i], backed up first as [i]user.bnd.mfd_backup[/i]. It doesn't touch the game folder.
 
 The mod itself is five text files: no images, nothing downloaded. The discipline icons and the MFD's background are the remaster's own art, loaded from the game at runtime.
 
