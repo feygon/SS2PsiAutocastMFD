@@ -544,6 +544,7 @@ class PsiMfdPanel extends ND.UiBase {
 			SetStatus(problem);
 			return;
 		}
+		m_macro.script = "";   // the file now holds this macro, not the psi script it used to run
 		local entry = m_keys[m_keyIndex];
 		local name = PsiMfdKeyName(entry.key);
 		SetStatus("Saved for " + name);
@@ -628,6 +629,7 @@ class PsiMfdPanel extends ND.UiBase {
 	function Changed() {
 		m_macro.dirty = true;
 		SetStatus("Not saved yet");
+		SetEditLabel(PSI_MFD_EDIT_HINT);   // drops any note about what the file used to run, or the last save
 		RebuildSteps();
 	}
 

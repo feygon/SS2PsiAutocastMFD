@@ -450,3 +450,17 @@ def test_extend_is_never_used_for_its_value():
             code = line.split("//")[0]
             if ".extend(" in code:
                 assert re.fullmatch(r"\s*[\w.]+\.extend\([^;]*\);\s*", code), f"{path.name}:{n}: {line.strip()}"
+
+
+def function_body(code, name):
+    start = code.index(f"function {name}(")
+    return code[start:code.index("\n\t}\n", start)]
+
+
+def test_script_note_goes_away_once_the_macro_changes():
+    """WHY: In game (2026-10-17) "Runs psi\T1_Projected_Cryokinesis.cmd: a macro saved here replaces it" stayed after
+    a step was added and saved, though the key then ran the new macro. Editing resets the label; saving forgets the
+    script the file used to run."""
+    ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
+    assert "SetEditLabel(PSI_MFD_EDIT_HINT)" in function_body(ui, "Changed")
+    assert 'm_macro.script = ""' in function_body(ui, "Save")
