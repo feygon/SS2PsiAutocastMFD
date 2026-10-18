@@ -440,3 +440,13 @@ def test_a_file_running_a_psi_script_is_working_content(b):
     for name in ["PsiMfdAddMarks", "PsiMfdKeyLook", "PsiMfdKeyHover"]:
         body = KB[KB.index(f"function {name}("):]
         assert '"script"' in body[:body.index("\n}\n")], name
+
+
+def test_extend_is_never_used_for_its_value():
+    """WHY: Squirrel's array.extend() changes the array and returns null; using its result ("foreach (k in
+    a.extend(b))") failed the first run in game with "cannot iterate null" (2026-10-17)."""
+    for path in SCRIPTS.glob("*.nut"):
+        for n, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            code = line.split("//")[0]
+            if ".extend(" in code:
+                assert re.fullmatch(r"\s*[\w.]+\.extend\([^;]*\);\s*", code), f"{path.name}:{n}: {line.strip()}"

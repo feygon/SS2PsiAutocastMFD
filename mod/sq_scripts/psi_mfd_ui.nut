@@ -688,7 +688,9 @@ function PsiMfdFirstRun() {
 			return;
 	}
 	local openKey = null;
-	foreach (key in ["keypad_star", "keypad_slash"].extend(ND.psiMfdCandidates)) {
+	local choices = ["keypad_star", "keypad_slash"];
+	choices.extend(ND.psiMfdCandidates);   // extend() returns null: never use its result
+	foreach (key in choices) {
 		if (!openKey && !(key in bindings))
 			openKey = key;
 	}
