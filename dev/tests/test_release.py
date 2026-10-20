@@ -184,6 +184,27 @@ def test_property_set_always_names_a_field():
             assert len(args) == 4, f"{path.name}: Property.Set({', '.join(args)})"
 
 
+def test_no_script_equips_the_weapon_slot():
+    """
+    WHY: ShockGame.Equip(0, weapon) brought out the pistol, but afterwards the amp couldn't be equipped at all
+    until the save was reloaded (psi_autocast's DEVELOPMENT.md). Weapons switch with equip_weapon instead.
+    """
+    for path in sorted(SCRIPTS.glob("*.nut")) + sorted(DEV_SCRIPTS.glob("*.nut")):
+        for args in call_args(strip_strings_and_comments(path.read_text(encoding="utf-8")), "ShockGame.Equip"):
+            assert args[0] not in ("0", "kEquipWeapon"), f"{path.name}: ShockGame.Equip({', '.join(args)})"
+
+
+def test_armor_tool_takes_off_the_old_armor_first():
+    """
+    WHY: Equipping straight over a held item is what left the amp stuck. The armor tool must empty the armor
+    slot before it puts anything in it, and only ever touch the armor slot.
+    """
+    calls = call_args(strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8")),
+                      "ShockGame.Equip")
+    assert calls and calls[0] == ["PSI_MFD_ARMOR_SLOT", "null"]
+    assert all(args[0] == "PSI_MFD_ARMOR_SLOT" for args in calls)
+
+
 # ---- game data ----------------------------------------------------------------------------------------
 
 def gam_chunks(kpf, member):
@@ -245,6 +266,22 @@ def test_dev_bullet_boxes_exist(kpf, member):
     assert boxes == ["AP Clip", "HE Clip"]
     for box in boxes:
         assert box in names, f"{member}: no archetype {box!r}"
+
+
+@needs_game
+@pytest.mark.parametrize("kpf,member", gamesys_files())
+def test_dev_armor_archetypes_exist(kpf, member):
+    """WHY: The armor tool finds armor by archetype name; a wrong name says "no ... in your inventory"."""
+    data, table = gam_chunks(kpf, member)
+    names = set()
+    for obj, value in gam_records(data, table, "P$SymName"):
+        n = struct.unpack_from("<I", value, 0)[0]
+        names.add(value[4:4 + n].split(b"\0")[0].decode("latin-1"))
+    listed = (DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8").split("ND.psiMfdArmors <- [")[1].split("]")[0]
+    armors = re.findall(r'"([^"]+)"', listed)
+    assert armors == ["Light Armor", "Medium Armor", "Heavy Armor", "Vacc Suit", "Reflec Armor", "Worm Skin"]
+    for armor in armors:
+        assert armor in names, f"{member}: no archetype {armor!r}"
 
 
 @needs_game
