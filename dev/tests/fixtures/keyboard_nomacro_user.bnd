@@ -133,7 +133,7 @@ game2 bind joy17 +impulse_rightcycle
 
 ; psi_autocast_mfd keyboard test: one key per state and mark (TEST_PLAN, Keyboard)
 bind keypad_star "summon_obj PsiMfd"
-bind keypad_plus "run psi\actions\Cancel_Macro.cmd"
+bind keypad_plus "run psi\actions\Cancel_Macro.txt"
 bind t wpn_setting_toggle
 bind x toggle_compass
 bind k "run psi\t2_localized_pyrokinesis.cmd"

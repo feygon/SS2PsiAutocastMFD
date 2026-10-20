@@ -248,11 +248,11 @@ def test_bitmaps_exist_in_the_remaster_art():
 
 @needs_main
 def test_finish_weapons_exist_in_psi_autocast():
-    """WHY: A "weapon:<Name>" step runs psi\\actions\\Switch_To_<Name>.cmd from psi_autocast; a missing file does nothing."""
+    """WHY: A "weapon:<Name>" step runs psi\\actions\\Switch_To_<Name>.txt from psi_autocast; a missing file does nothing."""
     finishes = re.findall(r'"weapon:([A-Za-z_]+)"', nut("psi_mfd_macros.nut"))
     assert finishes
     for name in finishes:
-        assert (MAIN / "psi" / "actions" / f"Switch_To_{name}.cmd").exists(), name
+        assert (MAIN / "psi" / "actions" / f"Switch_To_{name}.txt").exists(), name
 
 
 @needs_main
@@ -322,7 +322,7 @@ def test_bat_fresh_file(tmp_path):
     out = run_bat(tmp_path)
     new = added(before, lines(tmp_path))
     assert 'bind keypad_star "summon_obj PsiMfd"' in new
-    assert 'bind keypad_plus "run psi\\actions\\Cancel_Macro.cmd"' in new
+    assert 'bind keypad_plus "run psi\\actions\\Cancel_Macro.txt"' in new
     macro_keys = [l.split()[1] for l in new if "psi_macros" in l]
     assert macro_keys[:3] == ["a", "b", "c"], "letters come first"
     assert "g" not in macro_keys and "j" not in macro_keys
@@ -338,7 +338,7 @@ def test_bat_never_uses_ruled_out_keys(tmp_path):
     keys = [l.split()[1] for l in lines(tmp_path) if l.startswith("bind ") or l.startswith("game2 ")]
     assert not [k for k in keys if k in NEVER or "+" in k.replace("keypad_plus", "")]
     assert not [l for l in lines(tmp_path) if "wheel" in l.lower()]
-    assert [l for l in lines(tmp_path) if "keypad_plus" in l] == ['bind keypad_plus "run psi\\actions\\Cancel_Macro.cmd"']
+    assert [l for l in lines(tmp_path) if "keypad_plus" in l] == ['bind keypad_plus "run psi\\actions\\Cancel_Macro.txt"']
 
 
 def test_bat_leaves_existing_bindings_alone(tmp_path):
@@ -518,8 +518,8 @@ def test_bat_binds_the_starter_psi_keys(tmp_path):
     g = (tmp_path / "psi_macros" / "Macro_g.cmd").read_text().splitlines()
     j = (tmp_path / "psi_macros" / "Macro_j.cmd").read_text().splitlines()
     # The same files psi_autocast's starterPsiPowers.bat writes: one line running the psi script.
-    assert g == ["run psi\\T1_Projected_Cryokinesis.cmd"]
-    assert j == ["run psi\\chains\\Starter_Localized_Pyrokinesis.cmd"]
+    assert g == ["run psi\\T1_Projected_Cryokinesis.txt"]
+    assert j == ["run psi\\chains\\Starter_Localized_Pyrokinesis.txt"]
     assert "Starter key: g" in out
 
 
@@ -551,8 +551,8 @@ def test_bat_upgrades_the_starter_scripts_bindings(tmp_path):
     after = lines(tmp_path)
     assert [l for l in after if l.startswith("bind g ")] == ['bind g "run user:/psi_macros\\Macro_g.cmd"']
     assert [l for l in after if l.startswith("bind j ")] == ['bind j "run user:/psi_macros\\Macro_j.cmd"']
-    assert (tmp_path / "psi_macros" / "Macro_g.cmd").read_text().splitlines() == ["run psi\\T1_Projected_Cryokinesis.cmd"]
-    assert (tmp_path / "psi_macros" / "Macro_j.cmd").read_text().splitlines() == ["run psi\\chains\\Starter_Localized_Pyrokinesis.cmd"]
+    assert (tmp_path / "psi_macros" / "Macro_g.cmd").read_text().splitlines() == ["run psi\\T1_Projected_Cryokinesis.txt"]
+    assert (tmp_path / "psi_macros" / "Macro_j.cmd").read_text().splitlines() == ["run psi\\chains\\Starter_Localized_Pyrokinesis.txt"]
     assert "Starter key: g" in out and "Starter key: j" in out
 
 

@@ -95,7 +95,7 @@ def macro_file(lower):
     if not lower.startswith(PREFIX):
         return None
     rest = lower[len(PREFIX):]
-    if "\\" in rest or "/" in rest or ".." in rest or not rest.endswith(".cmd"):
+    if "\\" in rest or "/" in rest or ".." in rest or not rest.endswith((".cmd", ".txt")):
         return None
     return rest
 
@@ -142,7 +142,7 @@ def key_state(name, b, file_state):
 
 FIXTURE = "\r\n".join([
     'bind keypad_star "summon_obj psimfd"',
-    'bind keypad_plus "run psi\\actions\\cancel_macro.cmd"',
+    'bind keypad_plus "run psi\\actions\\cancel_macro.txt"',
     'bind g "run user:/psi_macros\\macrog.cmd"',
     'bind up "run user:/psi_macros\\macro_up.cmd"',
     'bind enter "run user:/psi_macros\\macro_enter.cmd"',
@@ -428,7 +428,7 @@ def test_a_file_running_a_psi_script_is_working_content(b):
     """WHY: The starter scripts bind G and J to Macro_g.cmd / Macro_j.cmd holding one line, run psi\\<script>.
     That key works; the MFD must show it as filled, not as an empty file (?), and a game key with such a file
     is a conflict (!) like one with a macro."""
-    assert file_state("run psi\\T1_Projected_Cryokinesis.cmd\n") == "script"
+    assert file_state("run psi\\T1_Projected_Cryokinesis.txt\n") == "script"
     assert file_state("set psi_chain arm,6o\nsummon_obj PsiChain\n") == "has"
     assert file_state("summon_obj PsiChain\n") == "empty"
     g = key_state("g", b, {"macrog.cmd": "script"})
@@ -464,3 +464,12 @@ def test_script_note_goes_away_once_the_macro_changes():
     ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
     assert "SetEditLabel(PSI_MFD_EDIT_HINT)" in function_body(ui, "Changed")
     assert 'm_macro.script = ""' in function_body(ui, "Save")
+
+
+def test_macro_files_may_be_txt_or_cmd():
+    """WHY: psi_autocast 1.4 uses .txt key files; a macro key bound to a .txt file in psi_macros must count as a
+    macro key just like the MFD's own .cmd files."""
+    assert macro_file("run user:/psi_macros\\macro_q.txt") == "macro_q.txt"
+    assert macro_file("run user:/psi_macros\\macro_q.cmd") == "macro_q.cmd"
+    macros = (SCRIPTS / "psi_mfd_macros.nut").read_text(encoding="utf-8")
+    assert '(endswith(rest, ".cmd") || endswith(rest, ".txt"))' in macros

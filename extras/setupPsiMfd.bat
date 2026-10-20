@@ -3,7 +3,7 @@ rem setupPsiMfd.bat: sets up the keys for psi_autocast and psi_autocast_mfd in t
 rem   - starter keys:  G and J run Macro_g.cmd / Macro_j.cmd holding psi_autocast's two starter casts (as starterPsiPowers.bat does)
 rem   - an open key:   bind <key> "summon_obj PsiMfd"
 rem   - macro keys:    bind <key> "run user:/psi_macros\Macro_<key>.cmd"   (every free key in the list below)
-rem   - keypad +:      reserved for psi_autocast's cancel key (bind keypad_plus "run psi\actions\Cancel_Macro.cmd")
+rem   - keypad +:      reserved for psi_autocast's cancel key (bind keypad_plus "run psi\actions\Cancel_Macro.txt")
 rem A key counts as free when user.bnd has no plain binding for it. Free keys are used without asking.
 rem A bound key is offered (y/n, one at a time) only when the game's defaults don't bind it and its command is also on
 rem another keyboard or mouse binding, so answering y never loses a command. No other binding is ever changed.
@@ -94,14 +94,14 @@ if not errorlevel 1 (
 rem Keypad + is psi_autocast's cancel key: bind it if it's free, never use it for anything else.
 findstr /i /b /c:"bind keypad_plus " "%BND%" >nul
 if errorlevel 1 (
-    >> "%NEW_BND%" echo bind keypad_plus "run psi\actions\Cancel_Macro.cmd"
+    >> "%NEW_BND%" echo bind keypad_plus "run psi\actions\Cancel_Macro.txt"
     set /a ADDED+=1
     echo Cancel key: keypad_plus
 ) else (
     findstr /i /b /c:"bind keypad_plus " "%BND%" | findstr /i /c:"cancel_macro" >nul
     if errorlevel 1 (
         echo Cancel key: keypad_plus already has another binding, left alone. psi_autocast's cancel is
-        echo   run psi\actions\Cancel_Macro.cmd  if you want it on a key.
+        echo   run psi\actions\Cancel_Macro.txt  if you want it on a key.
     ) else (
         echo Cancel key: keypad_plus already set up.
     )
@@ -112,9 +112,9 @@ rem Macro_j.cmd in psi_macros, each holding one line that runs the starter psi s
 rem with macros. An existing Macro_g.cmd / Macro_j.cmd is kept.
 rem If starterPsiPowers.bat already bound G or J (its exact lines), the key is upgraded to the macro version without
 rem asking: the same cast, now editable in the MFD. Any other binding on G or J is left alone.
-call :starter_key g "run psi\T1_Projected_Cryokinesis.cmd" "T1_Projected_Cryokinesis.cmd"
+call :starter_key g "run psi\T1_Projected_Cryokinesis.txt" "T1_Projected_Cryokinesis."
 if "!STARTED!"=="1" echo Starter key: g  casts Projected Cryokinesis, overloading it automatically.
-call :starter_key j "run psi\chains\Starter_Localized_Pyrokinesis.cmd" "chains\\Starter_Localized_Pyrokinesis.cmd"
+call :starter_key j "run psi\chains\Starter_Localized_Pyrokinesis.txt" "chains\\Starter_Localized_Pyrokinesis."
 if "!STARTED!"=="1" echo Starter key: j  casts Localized Pyrokinesis, then switches back to your previous weapon.
 
 rem Macro keys: every free candidate. Keys already bound (to a macro or anything else) are skipped.

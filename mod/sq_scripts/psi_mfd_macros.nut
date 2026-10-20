@@ -154,7 +154,7 @@ function PsiMfdMacroFile(lower) {
 	if (!startswith(lower, prefix))
 		return null;
 	local rest = lower.slice(prefix.len());
-	if (rest.find("\\") != null || rest.find("/") != null || rest.find("..") != null || !endswith(rest, ".cmd"))
+	if (rest.find("\\") != null || rest.find("/") != null || rest.find("..") != null || !(endswith(rest, ".cmd") || endswith(rest, ".txt")))
 		return null;
 	return rest;
 }

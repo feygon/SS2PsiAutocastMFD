@@ -706,7 +706,7 @@ function PsiMfdFirstRun() {
 		return;
 	}
 	if (!("keypad_plus" in bindings))
-		PsiMfdBindKey("keypad_plus", "\"run psi\\actions\\Cancel_Macro.cmd\"");
+		PsiMfdBindKey("keypad_plus", "\"run psi\\actions\\Cancel_Macro.txt\"");
 	local message = "psi_autocast_mfd: restart the game, then press " + PsiMfdKeyName(openKey) + " to open the psi MFD";
 	print("[psi_mfd] " + message);
 	try {
