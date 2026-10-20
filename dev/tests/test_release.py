@@ -205,6 +205,18 @@ def test_armor_tool_takes_off_the_old_armor_first():
     assert all(args[0] == "PSI_MFD_ARMOR_SLOT" for args in calls)
 
 
+def test_armor_tool_lets_go_of_the_old_armor_before_adding_it_back():
+    """
+    WHY: Equip(slot, null) only empties the slot: the player still held the old armor as worn (Contains 1002),
+    AddInvObj returned true without moving it, and equipping the new armor then pushed it out of the inventory
+    ("not held", 2026-10-20). It has to be let go first, then added like a new item.
+    """
+    code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    release = code.find("ShockGame.RemoveFromContainer(worn, player)")
+    add = code.find("ShockGame.AddInvObj(worn)")
+    assert release != -1 and add != -1 and release < add
+
+
 # ---- game data ----------------------------------------------------------------------------------------
 
 def gam_chunks(kpf, member):

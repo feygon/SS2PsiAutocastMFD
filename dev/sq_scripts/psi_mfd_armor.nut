@@ -63,11 +63,24 @@ class PsiMfdWearArmor extends SqRootScript {
 				print("[psi_armor] the armor slot didn't empty: stopped");
 				return;
 			}
-			local added = ShockGame.AddInvObj(worn);
-			print("[psi_armor] took off " + Describe(player, worn) + "; AddInvObj returned " + added);
-			if (added == false || added == 0) {
+			// The empty slot isn't enough: the player still holds the old armor as worn (Contains 1002), so
+			// AddInvObj alone leaves it there, and equipping the new armor then pushes it out of the inventory.
+			// Let go of it first, then add it back the way new items go in, and check it landed in a cell.
+			local landed = false;
+			try {
+				ShockGame.RemoveFromContainer(worn, player);
+				ShockGame.AddInvObj(worn);
+				local held = HeldAs(player, worn);
+				landed = held != null && held < 1000;
+			}
+			catch (e) {
+				print("[psi_armor] moving the old armor to the inventory failed: " + e);
+			}
+			print("[psi_armor] took off " + Describe(player, worn));
+			if (!landed) {
 				ShockGame.Equip(PSI_MFD_ARMOR_SLOT, worn);
-				print("[psi_armor] no room in the inventory for the armor you had on: put it back on, stopped");
+				print("[psi_armor] the armor you had on didn't reach the inventory (no room?): put it back on, now "
+					+ Describe(player, worn) + "; stopped");
 				return;
 			}
 		}
@@ -87,7 +100,15 @@ class PsiMfdWearArmor extends SqRootScript {
 		return 0;
 	}
 
-	// For the log: "Worm Skin 312 (Contains 1)", the object and how the player holds it. Never throws, so a log
+	// How the player holds obj: the Contains link's value, an inventory cell (11, 13) or 1000 + the slot when worn
+	// (1002 for armor); null when the player doesn't hold it.
+	function HeldAs(player, obj) {
+		foreach (l in Link.GetAll(LinkTools.LinkKindNamed("Contains"), player, obj))
+			return LinkTools.LinkGetData(l, "ordinal");
+		return null;
+	}
+
+	// For the log: "Worm Skin 147 (Contains 13)", the object and how the player holds it. Never throws, so a log
 	// line can't stop a swap halfway.
 	function Describe(player, obj) {
 		if (!obj)
@@ -95,10 +116,8 @@ class PsiMfdWearArmor extends SqRootScript {
 		local text = "" + obj;
 		try {
 			text = ND.GetArchetypeName(obj) + " " + obj;
-			local held = "not held";
-			foreach (l in Link.GetAll(LinkTools.LinkKindNamed("Contains"), player, obj))
-				held = "Contains " + LinkTools.LinkGetData(l, "ordinal");
-			text += " (" + held + ")";
+			local held = HeldAs(player, obj);
+			text += held == null ? " (not held)" : " (Contains " + held + ")";
 		}
 		catch (e) {
 			text += " (" + e + ")";

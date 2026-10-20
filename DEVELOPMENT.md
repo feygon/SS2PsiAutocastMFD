@@ -67,6 +67,14 @@
 - **Default bindings:** `base.kpf` → `defaults/shock.bnd` (the game's own defaults; `defaults/default.bnd` has only the console key). setupPsiMfd.bat copies its plain keyboard and mouse keys into `DEFAULT_KEYS`; a test checks the copy against the game file.
 - **Never `open(path, "wb").write(build())`** for user.bnd: `open` truncates before `build()` runs, so an exception leaves an empty file. Build the bytes first (it happened once, 2026-10-16; restored from the backup).
 
+## Dev tools and inventory facts (2026-10-20)
+
+- **`Property.Set` takes four arguments:** object, property, field, value. A property without named fields takes `""` as its field, as the game's debug menu writes `PsiPowerDesc`. Three arguments failed with "expected 3 parameters but got 4"; the respec tool's four-argument write then worked.
+- **Items straight into the inventory:** `Object.Create("AP Clip")`, `Property.Add(box, "StackCount")`, `Property.Set(box, "StackCount", "", 500)`, `ShockGame.AddInvObj(box)`. `AddInvObj` returned `true` and the boxes arrived. A bullet box's `StackCount` is its bullet count (`objname.str`: "A box of %d armor-piercing bullets"); `HE Clip` is the anti-personnel box.
+- **`use_obj` doesn't put armor on:** nothing for most armors, and the worm skin's research report.
+- **How the player holds an item** is the value of its `Contains` link (field `ordinal`): an inventory cell number in the grid (11 and 13 seen), or 1000 + the slot when equipped (1002 for armor; the game's slot list is `kEquipWeapon`, `kEquipWeaponAlt`, `kEquipArmor`, …).
+- **`ShockGame.Equip(slot, null)` only empties the slot.** The old item stays held at 1000 + the slot, out of sight. `AddInvObj` on an item the player already holds returns `true` and leaves it there. `Equip(slot, item)` then pushes any other item held at 1000 + the slot out of the player's inventory (the log said "not held"). This matches the amp that couldn't be equipped after `Equip(0, pistol)`. The armor tool now lets go of the old armor with `ShockGame.RemoveFromContainer` and adds it back with `AddInvObj` before equipping; this fix isn't tested in game yet.
+
 ## Psi power data (for the MFD's cells)
 
 `summon_obj PsiProbeData` (dev probe) reads every discipline from the running gamesys; the raw output from 2026-10-16 (SCP beta 6, PSI 4) is in `dev/data/psi_power_data.txt`.
