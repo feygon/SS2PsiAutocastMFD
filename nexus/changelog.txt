@@ -1,5 +1,10 @@
 Changelog for Nexus (Mod page > Logs, one entry per version). Plain text: one change per line.
 
+1.3
+The MFD sets up every free key at once (on the first load, and later for keys you free in Controls), each with a file: one restart, ever, instead of one per key.
+A macro key with no macro yet shows "psi_mfd_no_macro_yet" in the console when pressed.
+Works with psi_autocast 1.4, whose key files are .txt (the cancel key and starter keys point at the new names).
+
 1.2
 Keyboard picker: click Keys (or the key name) to choose a key from a keyboard showing what every key does.
 Key colours: macro key, free, set by the game, used by these mods, never used for macros. A double outline means the key has a saved macro.

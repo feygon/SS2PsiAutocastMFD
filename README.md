@@ -1,6 +1,6 @@
 # psi_autocast_mfd: an in-game psi macro MFD for System Shock 2: 25th Anniversary Remaster
 
-**TLDR:** Press one key and an MFD opens over the game: every discipline with its duration, effect, overload value and cyber module cost, and an editor that builds [psi_autocast](https://github.com/feygon/SS2PsiAutocast) macros and saves them to keys. **A restart is the most you'll ever have to do: no manual edits, if you don't want them.** Requires psi_autocast 1.2 or later.
+**TLDR:** Press one key and an MFD opens over the game: every discipline with its duration, effect, overload value and cyber module cost, and an editor that builds [psi_autocast](https://github.com/feygon/SS2PsiAutocast) macros and saves them to keys. **A restart is the most you'll ever have to do: no manual edits, if you don't want them.** Requires psi_autocast 1.4 or later.
 
 **Step-by-step setup for both mods, and a troubleshooting table:** [SETUP_GUIDE.md](https://github.com/feygon/SS2PsiAutocast/blob/main/SETUP_GUIDE.md).
 
@@ -21,14 +21,14 @@ The numbers are read from the running game, so they follow SCP if you use it.
 2. Click disciplines to add casts; add psi hypos, waits and a finishing weapon switch.
 3. **Save**, close the MFD, and press the key.
 
-Saving on a key that isn't a macro key yet binds it for you; the MFD tells you when that needs a restart. Keys the game uses stay with the game's Controls menu.
+Every key that isn't set by the game is a macro key, ready on the next keypress after you save. Keys you free later in the game's Controls menu become macro keys from your next start. Keys the game uses stay with the Controls menu.
 
 ## Install
 
-1. Install and enable psi_autocast 1.2 or later.
+1. Install and enable psi_autocast 1.4 or later.
 2. Extract this zip into the **game folder**, the one with `SystemShock2Remastered.exe`. It adds `mods\psi_autocast_mfd.kpf`.
 3. Choose **New Game → Mods**, add **psi_autocast_mfd** (keep psi_autocast), **Apply** and start. Once the first level loads, load your own save, then make a regular save.
-4. On that first load the MFD binds keypad * to open it. Restart the game once when it tells you to, then press keypad *.
+4. On that first load the MFD sets up your keys: keypad * to open it, keypad + to cancel a running macro, and every free key as a macro key. Restart the game once when it tells you to, then press keypad *.
 
 **In a new game, wait until you're through training before using the MFD:** macros don't take before then.
 
