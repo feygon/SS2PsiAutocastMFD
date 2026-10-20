@@ -406,7 +406,7 @@ def test_rebind_replaces_only_that_key():
         assert f"function {name}(" in macros, name
 
 
-STARTER = {"g": "run psi\\T1_Projected_Cryokinesis.txt", "j": "run psi\\chains\\Starter_Localized_Pyrokinesis.txt"}
+STARTER = {"g": "run psi\\t1_projected_cryokinesis.txt", "j": "run psi\\chains\\starter_localized_pyrokinesis.txt"}
 
 
 def keys_to_bind(b):
@@ -420,7 +420,7 @@ def keys_to_bind(b):
                 add[k] = '"summon_obj PsiMfd"'
                 break
     if free("keypad_plus"):
-        add["keypad_plus"] = '"run psi\\actions\\Cancel_Macro.txt"'
+        add["keypad_plus"] = '"run psi\\actions\\cancel_macro.txt"'
     for k in ["g", "j"] + nut_list("psiMfdCandidates"):
         if free(k):
             add[k] = '"run user:/psi_macros\\' + macro_name(k) + '"'
@@ -435,7 +435,7 @@ def test_every_free_key_is_bound_on_load():
     fresh = bindings('bind w +walkfast\r\nbind t wpn_setting_toggle\r\nbind c+alt toggle_compass\r\n')
     add = keys_to_bind(fresh)
     assert add["keypad_star"] == '"summon_obj PsiMfd"'
-    assert add["keypad_plus"] == '"run psi\\actions\\Cancel_Macro.txt"'
+    assert add["keypad_plus"] == '"run psi\\actions\\cancel_macro.txt"'
     assert add["g"] == '"run user:/psi_macros\\Macro_g.cmd"' and add[","] == '"run user:/psi_macros\\Macro_comma.cmd"'
     assert "w" not in add and "t" not in add and "c" in add
     assert len(add) == 2 + len(nut_list("psiMfdCandidates")) - 2   # all candidates but w and t, plus open key and cancel
@@ -468,7 +468,7 @@ def test_a_file_running_a_psi_script_is_working_content(b):
     """WHY: The starter scripts bind G and J to Macro_g.cmd / Macro_j.cmd holding one line, run psi\\<script>.
     That key works; the MFD must show it as filled, not as an empty file (?), and a game key with such a file
     is a conflict (!) like one with a macro."""
-    assert file_state("run psi\\T1_Projected_Cryokinesis.txt\n") == "script"
+    assert file_state("run psi\\t1_projected_cryokinesis.txt\n") == "script"
     assert file_state("set psi_chain arm,6o\nsummon_obj PsiChain\n") == "has"
     assert file_state("summon_obj PsiChain\n") == "empty"
     g = key_state("g", b, {"macrog.cmd": "script"})

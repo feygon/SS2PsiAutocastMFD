@@ -679,7 +679,7 @@ ND.psiMfdPending <- {};        // keys bound in user.bnd this session: they work
 ND.psiMfdKeysChecked <- false;
 
 // psi_autocast's two starter casts, for G and J (the same one-line files its starterPsiPowers.bat writes).
-ND.psiMfdStarter <- { g = "run psi\\T1_Projected_Cryokinesis.txt", j = "run psi\\chains\\Starter_Localized_Pyrokinesis.txt" };
+ND.psiMfdStarter <- { g = "run psi\\t1_projected_cryokinesis.txt", j = "run psi\\chains\\starter_localized_pyrokinesis.txt" };
 
 function PsiMfdIsFree(key, bindings, add) {
 	if (key in bindings)
@@ -712,7 +712,7 @@ function PsiMfdKeysToBind(bindings) {
 		}
 	}
 	if (PsiMfdIsFree("keypad_plus", bindings, add))
-		add.push(["keypad_plus", "\"run psi\\actions\\Cancel_Macro.txt\""]);
+		add.push(["keypad_plus", "\"run psi\\actions\\cancel_macro.txt\""]);
 	local keys = ["g", "j"];
 	keys.extend(ND.psiMfdCandidates);
 	foreach (key in keys) {
