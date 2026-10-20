@@ -427,7 +427,7 @@ class PsiMfdPanel extends ND.UiBase {
 			else {
 				m_macro = PsiMfdMacro(key.key, key.file);
 				m_macros[id] <- m_macro;
-				SetStatus(m_macro.Load() ? "Loaded" : "New macro");
+				SetStatus(m_macro.Load() && !m_macro.placeholder ? "Loaded" : "New macro");
 				if (m_macro.script != "" && !m_macro.steps.len() && m_macro.finish == "")
 					SetEditLabel("Runs " + m_macro.script + ": a macro saved here replaces it.");
 			}
@@ -549,18 +549,17 @@ class PsiMfdPanel extends ND.UiBase {
 		local name = PsiMfdKeyName(entry.key);
 		SetStatus("Saved for " + name);
 		local state = "state" in entry ? entry.state : "macro";
-		if (state == "free") {
+		if (state == "free") {   // a key freed in Controls since this load
 			local failed = PsiMfdBindKey(entry.key, "\"run " + PSI_MFD_RUN_PREFIX + entry.file + "\"");
 			if (failed)
 				SetEditLabel("Saved, but " + failed + ": " + name + " isn't bound.");
 			else {
-				entry.state = "pending";
+				entry.state = "macro";
 				ND.psiMfdPending[entry.key] <- true;
-				SetEditLabel("Saved. Restart the game for " + name + " to run this macro.");
 			}
 		}
-		else if (state == "pending")
-			SetEditLabel("Saved. Restart the game for " + name + " to run this macro.");
+		if (entry.key in ND.psiMfdPending)
+			SetEditLabel("Saved. " + name + " runs this macro after you next start the game.");
 		else if (state == "game")
 			SetEditLabel("Saved. " + name + " is set in Controls: clear it there, Save here again, then restart.");
 	}
@@ -676,38 +675,103 @@ ND.psiMfdSeenCursor <- false;  // the cursor has been up since the MFD opened
 ND.psiMfdOpenFor <- 0.0;       // seconds since the MFD opened
 const PSI_MFD_CURSOR_WAIT = 1.0; // the open key asks for the cursor; close if it hasn't come up by then
 ND.psiMfdPanel <- null;
-ND.psiMfdPending <- {};        // keys this session bound in user.bnd: they work after the next restart
-ND.psiMfdFirstRunDone <- false;
+ND.psiMfdPending <- {};        // keys bound in user.bnd this session: they work from the next start
+ND.psiMfdKeysChecked <- false;
 
-// First run (no batch file needed): if no key opens the MFD, bind one - keypad *, keypad /, or the first free
-// candidate - and psi_autocast's cancel on keypad + if that's free. They work after one restart.
-function PsiMfdFirstRun() {
+// psi_autocast's two starter casts, for G and J (the same one-line files its starterPsiPowers.bat writes).
+ND.psiMfdStarter <- { g = "run psi\\T1_Projected_Cryokinesis.txt", j = "run psi\\chains\\Starter_Localized_Pyrokinesis.txt" };
+
+function PsiMfdIsFree(key, bindings, add) {
+	if (key in bindings)
+		return false;
+	foreach (pair in add) {
+		if (pair[0] == key)
+			return false;
+	}
+	return true;
+}
+
+// The keys to bind on load, as [[key, command], ...]: an open key if none opens the MFD, keypad + for
+// psi_autocast's cancel, G and J with psi_autocast's starter casts, and every other free candidate as a macro key.
+// Only keys with no binding at all: game keys, combos and the player's own bindings are never touched.
+function PsiMfdKeysToBind(bindings) {
+	local add = [];
+	local hasOpen = false;
+	foreach (key, b in bindings) {
+		if (!b.combo && b.lower == "summon_obj psimfd")
+			hasOpen = true;
+	}
+	if (!hasOpen) {
+		local choices = ["keypad_star", "keypad_slash"];
+		choices.extend(ND.psiMfdCandidates);   // extend() returns null: never use its result
+		foreach (key in choices) {
+			if (PsiMfdIsFree(key, bindings, add)) {
+				add.push([key, "\"summon_obj PsiMfd\""]);
+				break;
+			}
+		}
+	}
+	if (PsiMfdIsFree("keypad_plus", bindings, add))
+		add.push(["keypad_plus", "\"run psi\\actions\\Cancel_Macro.txt\""]);
+	local keys = ["g", "j"];
+	keys.extend(ND.psiMfdCandidates);
+	foreach (key in keys) {
+		if (PsiMfdIsFree(key, bindings, add))
+			add.push([key, "\"run " + PSI_MFD_RUN_PREFIX + PsiMfdMacroName(key) + "\""]);
+	}
+	return add;
+}
+
+// The placeholder file for a macro key with no macro yet (punctuation keys by their file word).
+function PsiMfdPlaceholder(key) {
+	return PSI_MFD_PLACEHOLDER + (key in ND.psiMfdFileWords ? ND.psiMfdFileWords[key] : key) + "\r\n";
+}
+
+function PsiMfdFileExists(path) {
+	try {
+		PsiMfdReadFile(path);
+	}
+	catch (e) {
+		return false;
+	}
+	return true;
+}
+
+// Each load: binds every free key at once (one user.bnd write, backed up first), so any non-grey key takes a
+// macro on the next keypress after the next start. Only a first install, with no open key yet, asks for a restart.
+function PsiMfdEnsureKeys() {
 	local bindings = PsiMfdBindings();
 	if (bindings == null)
 		return;
-	foreach (key, b in bindings) {
-		if (!b.combo && b.lower == "summon_obj psimfd")
-			return;
+	local add = PsiMfdKeysToBind(bindings);
+	// Every macro key gets a file: a placeholder where there's none yet (keys already bound, and new ones below).
+	foreach (key in PsiMfdMacroKeys(bindings)) {
+		local file = PSI_MFD_ROOT + PSI_MFD_FOLDER + "\\" + key.file;
+		if (!PsiMfdFileExists(file))
+			PsiMfdWriteFile(file, PsiMfdPlaceholder(key.key));
 	}
+	if (!add.len())
+		return;
 	local openKey = null;
-	local choices = ["keypad_star", "keypad_slash"];
-	choices.extend(ND.psiMfdCandidates);   // extend() returns null: never use its result
-	foreach (key in choices) {
-		if (!openKey && !(key in bindings))
-			openKey = key;
+	foreach (pair in add) {
+		if (pair[1] == "\"summon_obj PsiMfd\"")
+			openKey = pair[0];
+		if (pair[1].find("psi_macros") != null) {
+			local file = PSI_MFD_ROOT + PSI_MFD_FOLDER + "\\" + PsiMfdMacroName(pair[0]);
+			if (!PsiMfdFileExists(file))
+				PsiMfdWriteFile(file, pair[0] in ND.psiMfdStarter ? ND.psiMfdStarter[pair[0]] + "\r\n" : PsiMfdPlaceholder(pair[0]));
+		}
 	}
-	if (!openKey) {
-		print("[psi_mfd] no free key to open the MFD: clear one in Options > Controls and restart");
-		return;
-	}
-	local failed = PsiMfdBindKey(openKey, "\"summon_obj PsiMfd\"");
+	local failed = PsiMfdBindKeys(add);
 	if (failed) {
-		print("[psi_mfd] " + failed + ": couldn't set up a key to open the MFD");
+		print("[psi_mfd] " + failed + ": couldn't set up keys");
 		return;
 	}
-	if (!("keypad_plus" in bindings))
-		PsiMfdBindKey("keypad_plus", "\"run psi\\actions\\Cancel_Macro.txt\"");
-	local message = "psi_autocast_mfd: restart the game, then press " + PsiMfdKeyName(openKey) + " to open the psi MFD";
+	foreach (pair in add)
+		ND.psiMfdPending[pair[0]] <- true;
+	local message = openKey
+		? "psi_autocast_mfd is set up: restart the game once, then press " + PsiMfdKeyName(openKey) + " to open the psi MFD"
+		: "psi_autocast_mfd: " + add.len() + " more keys are ready for macros from your next start";
 	print("[psi_mfd] " + message);
 	try {
 		ShockGame.AddText(message, "Player", 15000);
@@ -733,13 +797,13 @@ class PsiMfdHandler {
 	// Leaving cursor mode (back to shooting) closes the MFD, saved or not, so it doesn't reappear the next time
 	// the cursor comes up for another MFD.
 	function Update(deltaTime) {
-		if (!ND.psiMfdFirstRunDone) {
-			ND.psiMfdFirstRunDone = true;
+		if (!ND.psiMfdKeysChecked) {
+			ND.psiMfdKeysChecked = true;
 			try {
-				PsiMfdFirstRun();
+				PsiMfdEnsureKeys();
 			}
 			catch (e) {
-				PsiMfdFail("first run", e);
+				PsiMfdFail("binding keys", e);
 			}
 		}
 		if (ND.psiMfdOpen && !ND.psiMfdPanel) {

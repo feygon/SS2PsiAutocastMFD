@@ -124,6 +124,7 @@ for %%K in (%MACRO_CANDIDATES%) do (
     call :is_free "!KEY!"
     if "!FREE!"=="1" (
         >> "%NEW_BND%" echo bind !KEY! "run user:/psi_macros\Macro_%%K.cmd"
+        call :placeholder %%K
         set "TAKEN=!TAKEN!!KEY! "
         set /a MACROS+=1
         set /a ADDED+=1
@@ -253,6 +254,13 @@ set /a ADDED+=1
 if not exist "%BND_DIR%\psi_macros" mkdir "%BND_DIR%\psi_macros"
 if exist "%BND_DIR%\psi_macros\Macro_%~1.cmd" goto :eof
 > "%BND_DIR%\psi_macros\Macro_%~1.cmd" echo %~2
+goto :eof
+
+rem :placeholder <file word>  writes psi_macros\Macro_<word>.cmd holding "set psi_mfd_no_macro_yet <word>" unless it
+rem exists: every macro key gets a file, and pressing one with no macro yet shows that line in the console.
+:placeholder
+if not exist "%BND_DIR%\psi_macros" mkdir "%BND_DIR%\psi_macros"
+if not exist "%BND_DIR%\psi_macros\Macro_%~1.cmd" > "%BND_DIR%\psi_macros\Macro_%~1.cmd" echo set psi_mfd_no_macro_yet %~1
 goto :eof
 
 rem :key_of <candidate>  sets KEY to the key name in user.bnd: punctuation candidates are words.

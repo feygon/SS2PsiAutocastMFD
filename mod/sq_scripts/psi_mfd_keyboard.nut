@@ -176,13 +176,13 @@ function PsiMfdKeyHover(name, ks, bindings) {
 	switch (ks.state) {
 		case "macro":
 			if (name in ND.psiMfdPending)
-				text += "macro key: restart the game to use it";
+				text += "macro key: works from your next start";
 			else if (ks.content == "script")
 				text += "runs a psi_autocast script (" + ks.file + "); a macro saved here replaces it";
 			else
 				text += ks.content == "has" ? "macro (" + ks.file + ")" : "macro key, no macro yet";
 			break;
-		case "free": text += ks.content == "has" ? "free, has a macro: Save it here, then restart" : "free: Save a macro here, then restart"; break;
+		case "free": text += ks.content == "has" ? "free, has a macro: Save it here; it works from your next start" : "free: Save a macro here; it works from your next start"; break;
 		case "game": text += command + (ks.marks.find("!") != null ? "" : " (clear it in Controls for a macro)"); break;
 		case "mod": text += PsiMfdModText(b.lower, command); break;
 		case "reserved": text += "reserved for psi_autocast cancel"; break;

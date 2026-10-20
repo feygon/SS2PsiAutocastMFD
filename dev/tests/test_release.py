@@ -565,3 +565,11 @@ def test_bat_leaves_other_psi_autocast_bindings_on_g_and_j(tmp_path):
     for line in before:
         assert line in after
     assert not (tmp_path / "psi_macros" / "Macro_g.cmd").exists()
+
+
+def test_bat_writes_a_placeholder_for_each_new_macro_key(tmp_path):
+    """WHY: Every macro key gets a file; one with no macro yet holds the harmless placeholder line."""
+    (tmp_path / "user.bnd").write_bytes(b"; empty\r\n")
+    run_bat(tmp_path)
+    assert (tmp_path / "psi_macros" / "Macro_a.cmd").read_text().splitlines() == ["set psi_mfd_no_macro_yet a"]
+    assert (tmp_path / "psi_macros" / "Macro_comma.cmd").read_text().splitlines() == ["set psi_mfd_no_macro_yet comma"]

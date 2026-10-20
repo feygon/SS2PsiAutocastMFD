@@ -350,9 +350,7 @@ def test_texts_fit_in_90_characters():
     longest = max((display_name(k) for k in nut_list("psiMfdCandidates")), key=len)
     # The save messages: "Saved. " + name + rest, built in PsiMfdPanel.Save.
     messages = ["Saved. " + longest + rest for rest in re.findall(r'"Saved\. " \+ name \+ "([^"]*)"', ui)]
-    messages += ["Saved. Restart the game for " + longest + rest
-                 for rest in re.findall(r'"Saved\. Restart the game for " \+ name \+ "([^"]*)"', ui)]
-    assert len(messages) == 3  # game key, free key, pending key
+    assert len(messages) == 2  # game key; key that works after the next start
     for message in messages:
         assert len(message) <= 90, message
 
@@ -408,12 +406,54 @@ def test_rebind_replaces_only_that_key():
         assert f"function {name}(" in macros, name
 
 
-def test_first_run_binds_an_open_key_in_game():
-    """WHY: A player should never need the batch file: on the first load without an open key, the MFD binds one
-    (and psi_autocast's cancel on keypad + if free), effective after one restart."""
+STARTER = {"g": "run psi\\T1_Projected_Cryokinesis.txt", "j": "run psi\\chains\\Starter_Localized_Pyrokinesis.txt"}
+
+
+def keys_to_bind(b):
+    """The twin of PsiMfdKeysToBind: {key: command} the MFD binds on load (only keys with no binding)."""
+    add = {}
+    def free(k):
+        return k not in b and k not in add
+    if not any(not v["combo"] and v["lower"] == "summon_obj psimfd" for v in b.values()):
+        for k in ["keypad_star", "keypad_slash"] + nut_list("psiMfdCandidates"):
+            if free(k):
+                add[k] = '"summon_obj PsiMfd"'
+                break
+    if free("keypad_plus"):
+        add["keypad_plus"] = '"run psi\\actions\\Cancel_Macro.txt"'
+    for k in ["g", "j"] + nut_list("psiMfdCandidates"):
+        if free(k):
+            add[k] = '"run user:/psi_macros\\' + macro_name(k) + '"'
+    return add
+
+
+def test_every_free_key_is_bound_on_load():
+    """WHY: Binding a key only when a macro was saved on it cost one restart per key (user, 2026-10-19: "I'm having
+    to restart too much"). On load the MFD binds every free key at once - open key if none, keypad + cancel, G and J
+    with the starter casts, every other free candidate as a macro key - so after one restart any non-grey key takes
+    a macro on the next keypress. Bound keys (game keys, combos, an existing open key) are never touched."""
+    fresh = bindings('bind w +walkfast\r\nbind t wpn_setting_toggle\r\nbind c+alt toggle_compass\r\n')
+    add = keys_to_bind(fresh)
+    assert add["keypad_star"] == '"summon_obj PsiMfd"'
+    assert add["keypad_plus"] == '"run psi\\actions\\Cancel_Macro.txt"'
+    assert add["g"] == '"run user:/psi_macros\\Macro_g.cmd"' and add[","] == '"run user:/psi_macros\\Macro_comma.cmd"'
+    assert "w" not in add and "t" not in add and "c" in add
+    assert len(add) == 2 + len(nut_list("psiMfdCandidates")) - 2   # all candidates but w and t, plus open key and cancel
+    set_up = bindings('bind keypad_star "summon_obj PsiMfd"\r\nbind g "mine"\r\n')
+    again = keys_to_bind(set_up)
+    assert "keypad_slash" in again and again["keypad_slash"] != '"summon_obj PsiMfd"', "no second open key"
+    assert "g" not in again
+    next_load = dict(fresh)
+    next_load.update(bindings("\r\n".join(f"bind {k} {v}" for k, v in add.items())))
+    assert keys_to_bind(next_load) == {}, "nothing left on the next load"
     ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
-    assert "function PsiMfdFirstRun(" in ui
-    assert 'PsiMfdFail("first run"' in ui
+    for name in ["PsiMfdKeysToBind", "PsiMfdEnsureKeys"]:
+        assert f"function {name}(" in ui, name
+    assert 'PsiMfdFail("binding keys"' in ui
+    macros = (SCRIPTS / "psi_mfd_macros.nut").read_text(encoding="utf-8")
+    assert "function PsiMfdBindKeys(" in macros
+    for key, line in STARTER.items():
+        assert line.replace("\\", "\\\\") in ui, key
 
 
 def file_state(text):
@@ -473,3 +513,20 @@ def test_macro_files_may_be_txt_or_cmd():
     assert macro_file("run user:/psi_macros\\macro_q.cmd") == "macro_q.cmd"
     macros = (SCRIPTS / "psi_mfd_macros.nut").read_text(encoding="utf-8")
     assert '(endswith(rest, ".cmd") || endswith(rest, ".txt"))' in macros
+
+
+PLACEHOLDER = "set psi_mfd_no_macro_yet "
+
+
+def test_placeholder_files_mean_no_macro_yet():
+    """WHY: Every macro key gets a file (user, 2026-10-19). A key with no macro yet holds one harmless line,
+    "set psi_mfd_no_macro_yet <key>", which shows in the console when pressed (echo prints nothing). The MFD must
+    treat it as "no macro yet" - no ? mark, and the editor starts a new macro - not as a broken file."""
+    macros = (SCRIPTS / "psi_mfd_macros.nut").read_text(encoding="utf-8")
+    ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
+    assert f'"{PLACEHOLDER}"' in macros
+    body = macros[macros.index("function PsiMfdMacroFileState("):]
+    assert "placeholder" in body[:body.index("\n}\n")]
+    assert "m_macro.placeholder" in ui and "PsiMfdPlaceholder(" in ui
+    bat = BAT.read_bytes().decode("latin-1")
+    assert "set psi_mfd_no_macro_yet" in bat

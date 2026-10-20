@@ -8,6 +8,9 @@
 const PSI_MFD_ROOT = "user:/\\sq_cache\\";
 const PSI_MFD_FOLDER = "psi_macros";
 const PSI_MFD_RUN_PREFIX = "user:/psi_macros\\";
+// A macro key with no macro yet runs a file holding this line plus the key: harmless, and it shows in the
+// console when pressed (echo prints nothing there).
+const PSI_MFD_PLACEHOLDER = "set psi_mfd_no_macro_yet ";
 const PSI_MFD_GAP_MS = 500;       // the psi amp's refire limit (psi_autocast's PSI_REFIRE_MS)
 
 // Finishing weapon switches, as psi_autocast chain steps. "" is no switch.
@@ -148,6 +151,28 @@ function PsiMfdBindKey(key, command) {
 	return null;
 }
 
+// Binds several keys in one write: pairs is [[key, command], ...]. Same backup as PsiMfdBindKey. Returns null, or
+// the reason it couldn't.
+function PsiMfdBindKeys(pairs) {
+	local text = PsiMfdReadBnd();
+	if (text == null)
+		return "Couldn't read user.bnd";
+	try {
+		if (!ND.psiMfdBndBackedUp) {
+			PsiMfdWriteFile(PSI_MFD_ROOT + "user.bnd.mfd_backup", text);
+			ND.psiMfdBndBackedUp = true;
+		}
+		local updated = text;
+		foreach (pair in pairs)
+			updated = PsiMfdRebind(updated, pair[0], pair[1]);
+		PsiMfdWriteFile(PSI_MFD_ROOT + "user.bnd", updated);
+	}
+	catch (e) {
+		return "Couldn't write user.bnd";
+	}
+	return null;
+}
+
 // The macro file a lower-case command runs, if it's "run user:/psi_macros\<plain name>.cmd"; else null.
 function PsiMfdMacroFile(lower) {
 	local prefix = "run " + PSI_MFD_RUN_PREFIX.tolower();
@@ -172,6 +197,8 @@ function PsiMfdMacroFileState(fileName) {
 	}
 	if (macro.steps.len() || macro.finish != "")
 		return "has";
+	if (macro.placeholder)
+		return "missing";   // the placeholder line: no macro yet, not a broken file
 	return macro.script != "" ? "script" : "empty";   // "script": runs a psi_autocast script (the starter keys)
 }
 
@@ -208,6 +235,7 @@ class PsiMfdMacro {
 	drawMs = 800;
 	dirty = false;      // edited since the last load or save
 	script = "";        // a "run psi\..." line in the file (the starter keys run psi_autocast scripts this way)
+	placeholder = false; // the file is only the "no macro yet" line
 
 	constructor(key_, file_) {
 		key = key_;
@@ -261,6 +289,7 @@ class PsiMfdMacro {
 		steps = [];
 		finish = "";
 		script = "";
+		placeholder = false;
 		local chainFound = false;
 		foreach (raw in split(text, "\n")) {
 			local line = strip(raw);
@@ -274,6 +303,8 @@ class PsiMfdMacro {
 			}
 			else if (startswith(line.tolower(), "run psi\\"))
 				script = line.slice(4);
+			else if (startswith(line, PSI_MFD_PLACEHOLDER))
+				placeholder = true;
 		}
 		if (!chainFound)
 			arm = true;   // no macro in the file yet: a new one starts by drawing the amp, as usual
