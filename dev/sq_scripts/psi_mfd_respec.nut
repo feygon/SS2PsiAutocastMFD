@@ -2,9 +2,10 @@
 // Unlearns one discipline and refunds its cyber modules:
 //   set psi_respec_power 17
 //   summon_obj PsiMfdRespec
-// Clears the discipline's bit in PsiPowerDesc / PsiPower2Desc (the learned-disciplines bit sets the MFD reads) and
-// gives back the discipline's own cost on this difficulty (PsiMfdCost; tier unlocks aren't refunded) with
-// add_pool, the game's cheat command, so "enable_cheats 1" must be on (that disables achievements).
+// Clears the discipline's bit in PsiPowerDesc / PsiPower2Desc (the learned-disciplines bit sets the MFD reads),
+// written as the game's own debug menu writes them, and gives back the discipline's own cost on this difficulty
+// (PsiMfdCost; tier unlocks aren't refunded) with add_pool, the game's cheat command, so "enable_cheats 1" must
+// be on (that disables achievements). Nothing is refunded unless the bit really cleared.
 
 class PsiMfdRespec extends SqRootScript {
 	function OnBeginScript() {
@@ -46,12 +47,17 @@ class PsiMfdRespec extends SqRootScript {
 			print("[psi_respec] " + PsiMfdName(power) + " isn't learned");
 			return;
 		}
-		Property.Set("Player", prop, bits & ~bit);
+		Property.Set("Player", prop, "", bits & ~bit);
+		local after = Property.Get("Player", prop);
+		if (after != (bits & ~bit)) {
+			print("[psi_respec] " + prop + " is still " + after + " after writing " + (bits & ~bit) + ": nothing refunded");
+			return;
+		}
 		local refund = PsiMfdCost(power);
-		Debug.Command("add_pool " + refund);
-		local learned = Property.Get("Player", prop);
-		print("[psi_respec] unlearned " + PsiMfdName(power) + " (" + prop + " now " + learned + "); refunded " + refund
-			+ " cyber modules with add_pool");
+		local pool = Property.Get("Player", "ExP");
+		Debug.Command("add_pool", refund);
+		print("[psi_respec] unlearned " + PsiMfdName(power) + " (" + prop + " " + bits + " -> " + after + "); add_pool "
+			+ refund + " (player ExP " + pool + " -> " + Property.Get("Player", "ExP") + ")");
 	}
 }
 

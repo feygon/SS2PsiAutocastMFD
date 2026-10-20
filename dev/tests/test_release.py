@@ -151,6 +151,39 @@ def test_files_are_read_in_binary_mode():
     assert not re.search(r'::file\([^)]*"r"\)', macros)
 
 
+DEV_SCRIPTS = REPO / "dev" / "sq_scripts"
+
+
+def call_args(code, callee):
+    """The top-level arguments of every call to callee ("Property.Set") in code with strings already stripped."""
+    calls = []
+    for m in re.finditer(re.escape(callee) + r"\s*\(", code):
+        depth, start, args, i = 1, m.end(), [], m.end()
+        while depth:
+            if code[i] in "([{":
+                depth += 1
+            elif code[i] in ")]}":
+                depth -= 1
+            elif code[i] == "," and depth == 1:
+                args.append(code[start:i].strip())
+                start = i + 1
+            i += 1
+        args.append(code[start:i - 1].strip())
+        calls.append(args)
+    return calls
+
+
+def test_property_set_always_names_a_field():
+    """
+    WHY: Property.Set takes (object, property, field, value). A property without named fields takes "" as its
+    field, as the game's own scripts write it. Leaving the field out failed in game with "expected 3 parameters
+    but got 4", and the dev respec tool changed nothing (2026-10-20).
+    """
+    for path in sorted(SCRIPTS.glob("*.nut")) + sorted(DEV_SCRIPTS.glob("*.nut")):
+        for args in call_args(strip_strings_and_comments(path.read_text(encoding="utf-8")), "Property.Set"):
+            assert len(args) == 4, f"{path.name}: Property.Set({', '.join(args)})"
+
+
 # ---- game data ----------------------------------------------------------------------------------------
 
 def gam_chunks(kpf, member):
@@ -197,6 +230,21 @@ def test_power_archetypes_exist(kpf, member):
     for power, name in mfd_powers().items():
         assert name in names, f"{member}: no archetype {name!r}"
         assert power_of.get(names[name]) == power, f"{member}: {name!r} is discipline {power_of.get(names[name])}, not {power}"
+
+
+@needs_game
+@pytest.mark.parametrize("kpf,member", gamesys_files())
+def test_dev_bullet_boxes_exist(kpf, member):
+    """WHY: The dev bullet tool creates its boxes by archetype name; a wrong name gives nothing."""
+    data, table = gam_chunks(kpf, member)
+    names = set()
+    for obj, value in gam_records(data, table, "P$SymName"):
+        n = struct.unpack_from("<I", value, 0)[0]
+        names.add(value[4:4 + n].split(b"\0")[0].decode("latin-1"))
+    boxes = re.findall(r'\["([^"]+)", "[^"]+"\]', (DEV_SCRIPTS / "psi_mfd_bullets.nut").read_text(encoding="utf-8"))
+    assert boxes == ["AP Clip", "HE Clip"]
+    for box in boxes:
+        assert box in names, f"{member}: no archetype {box!r}"
 
 
 @needs_game
