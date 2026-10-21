@@ -278,6 +278,19 @@ def test_armor_goes_back_after_a_delay_not_at_the_release():
     assert re.search(r'class PsiMfdArmorBack extends SqRootScript \{\s*function OnBeginScript\(\) \{\s*SetOneShotTimer\("", 0\.5\);', armor)
 
 
+def test_armor_back_waits_for_the_click_after_a_target_power():
+    """
+    WHY: Half a second after Molecular Transmutation's chain ended, the worm skin was already off before the
+    player could click the item (2026-10-21). After a target power the armor waits while the cursor is up.
+    """
+    armor = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    ended = armor.split("function PsiMacroEnded(")[1].split("\nfunction ")[0]
+    assert "ND.psiLastReleasedPower" in ended and "ND.psiMfdTargetPowers" in ended
+    back = armor.split("class PsiMfdArmorBack extends SqRootScript")[1].split("\nclass ")[0]
+    assert "ShockGame.MouseCursor()" in back and "targeting" in back
+    assert 'SetOneShotTimer("", 0.25)' in back
+
+
 def test_restoring_consumes_the_memory_only_once_that_armor_is_on():
     """WHY: If the remembered armor isn't in the inventory, the memory stays, to restore after picking it up."""
     code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
@@ -362,6 +375,20 @@ def test_dev_armor_archetypes_exist(kpf, member):
     assert armors == ["Light Armor", "Medium Armor", "Heavy Armor", "Vacc Suit", "Reflec Armor", "Worm Skin"]
     for armor in armors:
         assert armor in names, f"{member}: no archetype {armor!r}"
+
+
+@needs_game
+@pytest.mark.parametrize("kpf,member", gamesys_files())
+def test_target_powers_are_the_gamesys_item_targeting_ones(kpf, member):
+    """
+    WHY: After these disciplines are cast, the player clicks the item they act on (PsiPower Type 4: Molecular
+    Duplication, Electron Cascade, Molecular Transmutation). The worm skin has to stay on until that click.
+    """
+    data, table = gam_chunks(kpf, member)
+    type4 = sorted({struct.unpack_from("<i", v, 0)[0] for _, v in gam_records(data, table, "P$PsiPower")
+                    if struct.unpack_from("<i", v, 4)[0] == 4})
+    listed = (DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8").split("ND.psiMfdTargetPowers <- [")[1].split("]")[0]
+    assert [int(n) for n in listed.split(",")] == type4 == [17, 18, 29]
 
 
 @needs_game

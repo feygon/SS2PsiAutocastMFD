@@ -82,6 +82,7 @@
 - **Worm skin while macros run (2026-10-21, works in game):** psi_autocast calls `PsiMacroStarted` / `PsiMacroEnded` around every cast and chain; the dev armor tool defines them.
   - **Verified:** an 8-step chain (three casts) and G's 2-step chain (`arm,6q`). Each time the worm skin went on as the chain started, and the hazard suit came back 0.5 s after "chain: done". A key running a single-cast file directly (no chain) hasn't been tried yet.
   - **First try failed:** `LinkDest` belongs to script objects and the hook runs outside one ("the index 'LinkDest' does not exist"). Top-level functions use `sLink(l).dest`, and a test now keeps them free of script-only calls.
+  - **Target disciplines (not yet tested in game):** 17 Molecular Duplication, 18 Electron Cascade and 29 Molecular Transmutation have PsiPower Type 4: after the cast, the player clicks the item. Half a second was too short to click before the worm skin came off. After one of these (read from psi_autocast's `ND.psiLastReleasedPower`), the armor waits while `ShockGame.MouseCursor()` is up, and up to 10 s for it to come up, then goes back.
   - **When the first macro starts:** the worm skin goes on, unless it's already on or not in the inventory.
   - **Half a second after the last one ends:** the armor worn before goes back on. The delay is there because the cast's `fire_weapon 0` is only queued.
   - **With no armor worn before:** the worm skin stays on, since armor only leaves the slot when other armor takes its place.

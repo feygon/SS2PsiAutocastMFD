@@ -119,9 +119,16 @@ function PsiMfdWornArmorNumber() {
 // ---- the worm skin while macros run ------------------------------------------------------------------------
 // When the first psi_autocast macro (cast or chain) starts, the worm skin goes on, unless it's already on or isn't
 // in the inventory. Half a second after the last one ends, the armor worn before goes back on; with no armor worn
-// before, the worm skin stays on (armor only leaves the slot when other armor takes its place). macros: the casts
-// and chains running; before: the armor to put back (0 when none was worn), or null when nothing was changed.
-ND.psiMfdMacroArmor <- { macros = [], before = null };
+// before, the worm skin stays on (armor only leaves the slot when other armor takes its place). After a discipline
+// that acts on an item you click, the armor waits for that click: see PsiMfdArmorBack.
+// macros: the casts and chains running; before: the armor to put back (0 when none was worn), or null when nothing
+// was changed; targeting: a target discipline was cast; released: the last psi_autocast release count seen.
+ND.psiMfdMacroArmor <- { macros = [], before = null, targeting = false, released = null };
+
+// Disciplines cast first and then clicked onto an item (PsiPower Type 4 in the gamesys): 17 Molecular Duplication,
+// 18 Electron Cascade, 29 Molecular Transmutation.
+ND.psiMfdTargetPowers <- [17, 18, 29];
+const PSI_MFD_TARGET_WAIT_MS = 10000;   // how long to wait for the cursor to come up for that click
 
 // The running macros, without except and without any that ended without saying so (a level change destroys them).
 function PsiMfdRunningMacros(except) {
@@ -140,6 +147,7 @@ function PsiMacroStarted(obj) {
 	state.macros = running;
 	if (running.len() > 1 || state.before != null)
 		return;   // an earlier macro already put the worm skin on
+	state.targeting = false;
 	local player = ND.g_PlayerCore.GetPlayer();
 	local worn = ShockGame.Equipped(PSI_MFD_ARMOR_SLOT);
 	if (worn && Object.InheritsFrom(worn, "Worm Skin"))
@@ -155,6 +163,12 @@ function PsiMacroStarted(obj) {
 function PsiMacroEnded(obj) {
 	local state = ND.psiMfdMacroArmor;
 	state.macros = PsiMfdRunningMacros(obj);
+	// A cast that just released a target discipline: the armor waits for its click.
+	if (("psiCastsReleased" in ND) && ND.psiCastsReleased != state.released) {
+		state.released = ND.psiCastsReleased;
+		if (("psiLastReleasedPower" in ND) && ND.psiMfdTargetPowers.find(ND.psiLastReleasedPower) != null)
+			state.targeting = true;
+	}
 	// Not at once: Debug.Command only queues console commands, so the cast's fire_weapon 0 hasn't happened yet.
 	if (state.macros.len() == 0 && state.before != null)
 		Object.Create("PsiMfdArmorBack");
@@ -168,6 +182,7 @@ function PsiMfdPutBackArmor() {
 		return;
 	local before = state.before;
 	state.before = null;
+	state.targeting = false;
 	if (!before) {
 		print("[psi_armor] macros done: no armor was worn before them, so the worm skin stays on");
 		return;
@@ -185,14 +200,31 @@ function PsiMfdPutBackArmor() {
 	PsiMfdSwapArmor(player, worn, before);
 }
 
+// Puts the armor worn before back on, half a second after the last macro ended. After a target discipline, it waits
+// while the cursor is up for the click, and up to PSI_MFD_TARGET_WAIT_MS for the cursor to come up.
 class PsiMfdArmorBack extends SqRootScript {
 	function OnBeginScript() {
 		SetOneShotTimer("ArmorBack", 0.5);
+		SetData("WaitedMs", 500);
+		SetData("SawCursor", 0);
 	}
 
 	function OnTimer() {
 		if (message().name != "ArmorBack")
 			return;
+		if (ND.psiMfdMacroArmor.targeting && PsiMfdRunningMacros(0).len() == 0) {
+			local cursor = ShockGame.MouseCursor();
+			if (cursor)
+				SetData("SawCursor", 1);
+			local waited = GetData("WaitedMs");
+			if (cursor || (!GetData("SawCursor") && waited < PSI_MFD_TARGET_WAIT_MS)) {
+				if (waited == 500)
+					print("[psi_armor] keeping the worm skin on for the item click");
+				SetData("WaitedMs", waited + 250);
+				SetOneShotTimer("ArmorBack", 0.25);
+				return;
+			}
+		}
 		try {
 			PsiMfdPutBackArmor();
 		}
