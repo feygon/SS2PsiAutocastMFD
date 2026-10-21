@@ -130,6 +130,22 @@ ND.psiMfdMacroArmor <- { macros = [], before = null, targeting = false, released
 ND.psiMfdTargetPowers <- [17, 18, 29];
 const PSI_MFD_TARGET_WAIT_MS = 10000;   // how long to wait for the cursor to come up for that click
 
+// What the player holds, as text: each held object and its stack count, sorted. It changes when the item clicked
+// after a target discipline is used up or copied (Molecular Transmutation's item turns into nanites).
+function PsiMfdInventoryPrint(player) {
+	local held = [];
+	foreach (l in Link.GetAll(LinkTools.LinkKindNamed("Contains"), player, 0)) {
+		local obj = sLink(l).dest;
+		local stack = Property.Get(obj, "StackCount");
+		held.push(obj + ":" + (stack == null ? "-" : stack));
+	}
+	held.sort();
+	local text = "";
+	foreach (item in held)
+		text += item + ",";
+	return text;
+}
+
 // The running macros, without except and without any that ended without saying so (a level change destroys them).
 function PsiMfdRunningMacros(except) {
 	local running = [];
@@ -201,7 +217,8 @@ function PsiMfdPutBackArmor() {
 }
 
 // Puts the armor worn before back on, half a second after the last macro ended. After a target discipline, it waits
-// while the cursor is up for the click, and up to PSI_MFD_TARGET_WAIT_MS for the cursor to come up.
+// for the click: until the inventory changes (the clicked item used up or copied), or, when it doesn't (Electron
+// Cascade only recharges), until the cursor is down, waiting up to PSI_MFD_TARGET_WAIT_MS for it to come up.
 class PsiMfdArmorBack extends SqRootScript {
 	function OnBeginScript() {
 		SetOneShotTimer("ArmorBack", 0.5);
@@ -213,17 +230,23 @@ class PsiMfdArmorBack extends SqRootScript {
 		if (message().name != "ArmorBack")
 			return;
 		if (ND.psiMfdMacroArmor.targeting && PsiMfdRunningMacros(0).len() == 0) {
+			local waited = GetData("WaitedMs");
+			local inventory = PsiMfdInventoryPrint(ND.g_PlayerCore.GetPlayer());
+			if (waited == 500)
+				SetData("Inventory", inventory);
+			local clicked = inventory != GetData("Inventory");
 			local cursor = ShockGame.MouseCursor();
 			if (cursor)
 				SetData("SawCursor", 1);
-			local waited = GetData("WaitedMs");
-			if (cursor || (!GetData("SawCursor") && waited < PSI_MFD_TARGET_WAIT_MS)) {
+			if (!clicked && (cursor || (!GetData("SawCursor") && waited < PSI_MFD_TARGET_WAIT_MS))) {
 				if (waited == 500)
 					print("[psi_armor] keeping the worm skin on for the item click");
 				SetData("WaitedMs", waited + 250);
 				SetOneShotTimer("ArmorBack", 0.25);
 				return;
 			}
+			if (clicked)
+				print("[psi_armor] the inventory changed: the item click is done");
 		}
 		try {
 			PsiMfdPutBackArmor();

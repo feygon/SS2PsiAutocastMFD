@@ -291,6 +291,20 @@ def test_armor_back_waits_for_the_click_after_a_target_power():
     assert 'SetOneShotTimer("", 0.25)' in back
 
 
+def test_the_item_click_ends_the_wait_when_the_inventory_changes():
+    """
+    WHY: After Molecular Transmutation's click, the worm skin stayed on until the player left cursor mode
+    (2026-10-21). The click changes what the player holds (the item turns into nanites; a copy appears), so a
+    change in the inventory ends the wait at once.
+    """
+    armor = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    back = armor.split("class PsiMfdArmorBack extends SqRootScript")[1].split("\nclass ")[0]
+    assert "PsiMfdInventoryPrint(" in back and 'GetData("")' in back
+    inventory = top_level_functions(armor)["PsiMfdInventoryPrint"]
+    assert '"StackCount"' in (DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8")
+    assert "sLink(l).dest" in inventory and ".sort()" in inventory
+
+
 def test_restoring_consumes_the_memory_only_once_that_armor_is_on():
     """WHY: If the remembered armor isn't in the inventory, the memory stays, to restore after picking it up."""
     code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
