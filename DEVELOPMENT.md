@@ -78,6 +78,7 @@
   - 2026-10-21: `Equip(slot, null)`, `RemoveFromContainer(old, player)`, `AddInvObj(old)`: the old armor at 1002 again, with plenty of room in the inventory. The tool put it back on and stopped; nothing was lost.
   - 2026-10-21, working order: `Equip(slot, null)` left the old armor "not held", so the player lets go of it entirely and `RemoveFromContainer` has nothing left to do. `Equip(slot, new)` moved the new armor from its cell to 1002. `AddInvObj(old)` returned `true` and put the old armor in cell 11, the cell the new armor had left. Worked both ways (worm skin to hazard suit and back), confirmed in game.
   - So: `AddInvObj` puts armor into the armor slot when that slot is empty, which caused both failures. Equipping an item pushes out whatever else is held at 1000 + the slot.
+  - Works with a full inventory too (confirmed in game): the new armor frees its cell before the old one needs it, as with a hot-swap in the inventory screen.
 
 ## Psi power data (for the MFD's cells)
 
