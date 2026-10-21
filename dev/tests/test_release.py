@@ -184,6 +184,34 @@ def test_property_set_always_names_a_field():
             assert len(args) == 4, f"{path.name}: Property.Set({', '.join(args)})"
 
 
+SCRIPT_ONLY_CALLS = ("LinkDest(", "LinkSource(", "GetData(", "SetData(", "SetOneShotTimer(", "message()", "self")
+
+
+def top_level_functions(code):
+    """{name: body} for each function defined at the top of a file (not a class method), strings stripped."""
+    bodies = {}
+    for m in re.finditer(r"^function (\w+)\([^)]*\)\s*\{", code, re.M):
+        depth, i = 1, m.end()
+        while depth:
+            depth += {"{": 1, "}": -1}.get(code[i], 0)
+            i += 1
+        bodies[m.group(1)] = code[m.end():i - 1]
+    return bodies
+
+
+def test_top_level_functions_use_no_script_only_calls():
+    """
+    WHY: LinkDest, GetData, timers, message() and self belong to a game script object, not the global scope. A top-level
+    function works when a script object calls it, and fails when psi_autocast's hook calls it ("the index 'LinkDest'
+    does not exist", 2026-10-21: the worm skin never went on). sLink(l).dest works anywhere.
+    """
+    for path in sorted(SCRIPTS.glob("*.nut")) + sorted(DEV_SCRIPTS.glob("*.nut")):
+        for name, body in top_level_functions(strip_strings_and_comments(path.read_text(encoding="utf-8"))).items():
+            for call in SCRIPT_ONLY_CALLS:
+                assert not re.search(r"(?<![\w.])" + re.escape(call) + (r"\b" if call == "self" else ""), body), \
+                    f"{path.name}: {name} uses {call}"
+
+
 def test_no_script_equips_the_weapon_slot():
     """
     WHY: ShockGame.Equip(0, weapon) brought out the pistol, but afterwards the amp couldn't be equipped at all

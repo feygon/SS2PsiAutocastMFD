@@ -68,10 +68,11 @@ function PsiMfdWearArmorNumber(n) {
 	return PsiMfdSwapArmor(player, worn, armor);
 }
 
-// The first armor of this kind the player holds, other than the one being worn; 0 if none.
+// The first armor of this kind the player holds, other than the one being worn; 0 if none. sLink, not LinkDest:
+// LinkDest belongs to script objects, and psi_autocast's hooks call this from outside one.
 function PsiMfdFindArmor(player, name, worn) {
 	foreach (l in Link.GetAll(LinkTools.LinkKindNamed("Contains"), player, 0)) {
-		local obj = LinkDest(l);
+		local obj = sLink(l).dest;
 		if (obj != worn && Object.InheritsFrom(obj, name))
 			return obj;
 	}
