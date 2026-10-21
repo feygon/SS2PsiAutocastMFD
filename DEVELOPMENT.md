@@ -73,7 +73,11 @@
 - **Items straight into the inventory:** `Object.Create("AP Clip")`, `Property.Add(box, "StackCount")`, `Property.Set(box, "StackCount", "", 500)`, `ShockGame.AddInvObj(box)`. `AddInvObj` returned `true` and the boxes arrived. A bullet box's `StackCount` is its bullet count (`objname.str`: "A box of %d armor-piercing bullets"); `HE Clip` is the anti-personnel box.
 - **`use_obj` doesn't put armor on:** nothing for most armors, and the worm skin's research report.
 - **How the player holds an item** is the value of its `Contains` link (field `ordinal`): an inventory cell number in the grid (11 and 13 seen), or 1000 + the slot when equipped (1002 for armor; the game's slot list is `kEquipWeapon`, `kEquipWeaponAlt`, `kEquipArmor`, …).
-- **`ShockGame.Equip(slot, null)` only empties the slot.** The old item stays held at 1000 + the slot, out of sight. `AddInvObj` on an item the player already holds returns `true` and leaves it there. `Equip(slot, item)` then pushes any other item held at 1000 + the slot out of the player's inventory (the log said "not held"). This matches the amp that couldn't be equipped after `Equip(0, pistol)`. The armor tool now lets go of the old armor with `ShockGame.RemoveFromContainer` and adds it back with `AddInvObj` before equipping; this fix isn't tested in game yet.
+- **Swapping armor, what the logs showed:**
+  - 2026-10-20: `Equip(slot, null)`, then `AddInvObj(old)` (returned `true`): the old armor was at 1002. Then `Equip(slot, new)`: the new armor at 1002, the old one "not held", gone from the inventory. This matches the amp that couldn't be equipped after `Equip(0, pistol)`.
+  - 2026-10-21: `Equip(slot, null)`, `RemoveFromContainer(old, player)`, `AddInvObj(old)`: the old armor at 1002 again, with plenty of room in the inventory. The tool put it back on and stopped; nothing was lost.
+  - So equipping an item pushes out whatever else is held at 1000 + the slot. Not yet known: whether `Equip(slot, null)` leaves the old item at 1002, or `AddInvObj` puts armor into an empty armor slot.
+  - The tool now puts the new armor on before adding the old one back, and logs each step to answer that. Not yet tested in game.
 
 ## Psi power data (for the MFD's cells)
 

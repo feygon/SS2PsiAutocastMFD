@@ -217,6 +217,17 @@ def test_armor_tool_lets_go_of_the_old_armor_before_adding_it_back():
     assert release != -1 and add != -1 and release < add
 
 
+def test_armor_tool_puts_the_new_armor_on_before_adding_the_old_back():
+    """
+    WHY: With the armor slot empty, the old armor came back in the slot (Contains 1002) after AddInvObj
+    (2026-10-21), so the swap stopped. With the new armor already in the slot, the old one has to go to a cell.
+    """
+    code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    wear_new = code.find("ShockGame.Equip(PSI_MFD_ARMOR_SLOT, armor)")
+    add_old = code.find("ShockGame.AddInvObj(worn)")
+    assert wear_new != -1 and add_old != -1 and wear_new < add_old
+
+
 # ---- game data ----------------------------------------------------------------------------------------
 
 def gam_chunks(kpf, member):

@@ -6,9 +6,10 @@
 // is PoweredArmor), 6 Worm Skin.
 // The console's use_obj doesn't put armor on (it does nothing, or shows the worm skin's research report), so this
 // calls ShockGame.Equip on the armor slot. ShockGame.Equip(0, weapon) straight over a held weapon left the old one
-// unequippable until a reload, so the worn armor always comes off first, with Equip(slot, null) as the game's
-// cutscene code clears the weapon slot, and goes back into the inventory. If it can't, it goes back on and
-// nothing else changes.
+// unequippable until a reload, so the worn armor always comes off first: Equip(slot, null), as the game's cutscene
+// code clears the weapon slot, then RemoveFromContainer. The new armor goes on, and only then does the old one go
+// back into the inventory with AddInvObj (added while the slot was empty, it came back in the slot). Every step is
+// logged; the log says to reload the quicksave if the old armor didn't reach an inventory cell.
 
 const PSI_MFD_ARMOR_SLOT = 2;   // kEquipArmor: third in the game's slot list, after kEquipWeapon and kEquipWeaponAlt
 
@@ -63,31 +64,30 @@ class PsiMfdWearArmor extends SqRootScript {
 				print("[psi_armor] the armor slot didn't empty: stopped");
 				return;
 			}
-			// The empty slot isn't enough: the player still holds the old armor as worn (Contains 1002), so
-			// AddInvObj alone leaves it there, and equipping the new armor then pushes it out of the inventory.
-			// Let go of it first, then add it back the way new items go in, and check it landed in a cell.
-			local landed = false;
+			print("[psi_armor] slot emptied: old armor " + Describe(player, worn));
 			try {
 				ShockGame.RemoveFromContainer(worn, player);
-				ShockGame.AddInvObj(worn);
-				local held = HeldAs(player, worn);
-				landed = held != null && held < 1000;
 			}
 			catch (e) {
-				print("[psi_armor] moving the old armor to the inventory failed: " + e);
+				print("[psi_armor] RemoveFromContainer failed: " + e);
 			}
-			print("[psi_armor] took off " + Describe(player, worn));
-			if (!landed) {
-				ShockGame.Equip(PSI_MFD_ARMOR_SLOT, worn);
-				print("[psi_armor] the armor you had on didn't reach the inventory (no room?): put it back on, now "
-					+ Describe(player, worn) + "; stopped");
-				return;
-			}
+			print("[psi_armor] let go: old armor " + Describe(player, worn));
 		}
 		ShockGame.Equip(PSI_MFD_ARMOR_SLOT, armor);
 		ShockGame.RecalcStats("Player");
-		print("[psi_armor] after: wearing " + Describe(player, ShockGame.Equipped(PSI_MFD_ARMOR_SLOT))
+		print("[psi_armor] now wearing " + Describe(player, ShockGame.Equipped(PSI_MFD_ARMOR_SLOT))
 			+ (worn ? "; old armor " + Describe(player, worn) : ""));
+		if (worn) {
+			// Only now, with the new armor in the slot: emptying the slot, letting go and AddInvObj left the old
+			// armor at Contains 1002 again (2026-10-21, with plenty of room), and the swap stopped.
+			local added = ShockGame.AddInvObj(worn);
+			print("[psi_armor] AddInvObj returned " + added + ": old armor " + Describe(player, worn));
+			local held = HeldAs(player, worn);
+			if (held == null)
+				print("[psi_armor] you no longer hold the old armor: reload your quicksave");
+			else if (held >= 1000)
+				print("[psi_armor] the old armor isn't in an inventory cell: reload your quicksave");
+		}
 	}
 
 	// The first armor of this kind the player holds, other than the one being worn; 0 if none.
