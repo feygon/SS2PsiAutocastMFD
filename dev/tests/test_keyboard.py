@@ -104,6 +104,11 @@ def also_on(name, b):
     return sorted(k for k, v in b.items() if k != name and v["lower"] == b[name]["lower"] and not k.startswith("joy"))
 
 
+def nut_string(name):
+    """A string ND slot from psi_mfd_keyboard.nut, so the twin never carries its own copy."""
+    return re.search(r'ND\.' + name + r' <- "([^"]+)";', KB).group(1)
+
+
 def key_state(name, b, file_state):
     s = dict(state="faint", selectable=False, file=None, contentFile=None, content=None, marks="")
     if b is None:
@@ -119,8 +124,10 @@ def key_state(name, b, file_state):
         s["state"] = "mod"
     elif macro_file(lower):
         s.update(state="macro", selectable=True, file=macro_file(lower))
-    elif lower.startswith("summon_obj psimfdwheel") or "cancel_macro" in lower:
+    elif lower.startswith("summon_obj psimfdwheel") or "cancel_macro" in lower or lower == nut_string("psiMfdMaintainCommand").lower():
         s["state"] = "mod"
+    elif name == nut_string("psiMfdMaintainKey") and not bind:
+        s["state"] = "reserved"
     elif candidate:
         s.update(state="game" if bind else "free", selectable=True, file=macro_name(name))
     else:
@@ -146,7 +153,7 @@ FIXTURE = "\r\n".join([
     'bind g "run user:/psi_macros\\macrog.cmd"',
     'bind up "run user:/psi_macros\\macro_up.cmd"',
     'bind enter "run user:/psi_macros\\macro_enter.cmd"',
-    'bind k "run psi\\t2_localized_pyrokinesis.cmd"',
+    'bind l "run psi\\t2_localized_pyrokinesis.cmd"',
     'bind t wpn_setting_toggle',
     'bind mouse5 wpn_setting_toggle',
     'bind joy3 interact',
@@ -228,7 +235,7 @@ def test_parse_handles_crlf_quotes_comments_game2_and_duplicates(b):
 
 @pytest.mark.parametrize("name,state,selectable", [
     ("keypad_plus", "reserved", False), ("enter", "never", False), ("space", "never", False),
-    ("keypad_star", "mod", False), ("k", "game", True), ("g", "macro", True), ("up", "macro", True),
+    ("keypad_star", "mod", False), ("k", "reserved", False), ("l", "game", True), ("g", "macro", True), ("up", "macro", True),
     ("o", "free", True), ("t", "game", True), ("v", "game", True), ("numlock", "notoffered", False), ("left", "free", True)])
 def test_states_follow_r11_order(b, name, state, selectable):
     """WHY: R11's order decides overlaps: keypad + and never-list keys win over macro bindings; a hand-bound
@@ -306,8 +313,8 @@ def test_punctuation_keys_are_offered_with_file_safe_names():
 
 def test_psi_autocast_keys_are_ordinary_game_keys(b):
     """WHY: User decision 2026-10-16: a key running a psi_autocast script isn't reserved; it's a game key."""
-    s = key_state("k", b, {})
-    assert (s["state"], s["selectable"], s["file"]) == ("game", True, "Macro_k.cmd")
+    s = key_state("l", b, {})
+    assert (s["state"], s["selectable"], s["file"]) == ("game", True, "Macro_l.cmd")
 
 
 def function_lengths(code):
@@ -409,8 +416,9 @@ def test_rebind_replaces_only_that_key():
 STARTER = {"g": "run psi\\t1_projected_cryokinesis.txt", "j": "run psi\\chains\\starter_localized_pyrokinesis.txt"}
 
 
-def keys_to_bind(b):
-    """The twin of PsiMfdKeysToBind: {key: command} the MFD binds on load (only keys with no binding)."""
+def keys_to_bind(b, take_k=False):
+    """The twin of PsiMfdKeysToBind: {key: command} the MFD binds on load (only keys with no binding, and the
+    maintenance key when take_k: a macro key whose file has no macro yet)."""
     add = {}
     def free(k):
         return k not in b and k not in add
@@ -421,6 +429,8 @@ def keys_to_bind(b):
                 break
     if free("keypad_plus"):
         add["keypad_plus"] = '"run psi\\actions\\cancel_macro.txt"'
+    if take_k or free(nut_string("psiMfdMaintainKey")):
+        add[nut_string("psiMfdMaintainKey")] = '"' + nut_string("psiMfdMaintainCommand") + '"'
     for k in ["g", "j"] + nut_list("psiMfdCandidates"):
         if free(k):
             add[k] = '"run user:/psi_macros\\' + macro_name(k) + '"'
@@ -438,7 +448,7 @@ def test_every_free_key_is_bound_on_load():
     assert add["keypad_plus"] == '"run psi\\actions\\cancel_macro.txt"'
     assert add["g"] == '"run user:/psi_macros\\Macro_g.cmd"' and add[","] == '"run user:/psi_macros\\Macro_comma.cmd"'
     assert "w" not in add and "t" not in add and "c" in add
-    assert len(add) == 2 + len(nut_list("psiMfdCandidates")) - 2   # all candidates but w and t, plus open key and cancel
+    assert len(add) == 3 + len(nut_list("psiMfdCandidates")) - 2   # all candidates but w and t, plus open, cancel, K
     set_up = bindings('bind keypad_star "summon_obj PsiMfd"\r\nbind g "mine"\r\n')
     again = keys_to_bind(set_up)
     assert "keypad_slash" in again and again["keypad_slash"] != '"summon_obj PsiMfd"', "no second open key"
@@ -454,6 +464,26 @@ def test_every_free_key_is_bound_on_load():
     assert "function PsiMfdBindKeys(" in macros
     for key, line in STARTER.items():
         assert line.replace("\\", "\\\\") in ui, key
+
+
+def test_k_is_the_maintenance_key():
+    """WHY: K uses a maintenance tool on the weapon in hand by default, so it isn't a macro key (author's decision
+    2026-10-21). It's bound on load when free, or when it's a macro key with no macro yet; a K holding a real macro,
+    or set to anything else, is never touched (no keys taken from the player)."""
+    assert nut_string("psiMfdMaintainKey") == "k" and nut_string("psiMfdMaintainCommand") == "summon_obj PsiMfdMaintainWeapon"
+    assert "k" not in nut_list("psiMfdCandidates")
+    maintain = '"summon_obj PsiMfdMaintainWeapon"'
+    assert keys_to_bind(bindings('bind w +walkfast\r\n'))["k"] == maintain
+    empty_macro = bindings('bind k "run user:/psi_macros\\macro_k.cmd"\r\n')
+    assert keys_to_bind(empty_macro, take_k=True)["k"] == maintain
+    assert "k" not in keys_to_bind(empty_macro), "a K macro key with a macro is left alone"
+    assert "k" not in keys_to_bind(bindings('bind k +lean_left\r\n'))
+    assert key_state("k", bindings('bind k "summon_obj PsiMfdMaintainWeapon"\r\n'), {})["state"] == "mod"
+    assert key_state("k", bindings('bind w +walkfast\r\n'), {})["state"] == "reserved"
+    assert key_state("k", empty_macro, {"macro_k.cmd": "has"})["state"] == "macro"
+    assert "uses a maintenance tool on the weapon in hand" in KB and "reserved for the maintenance tool" in KB
+    ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")
+    assert re.search(r'PsiMfdMacroFileState\(\w+\) == "missing"', ui), "takes K over only when its file has no macro"
 
 
 def file_state(text):
@@ -498,7 +528,7 @@ def function_body(code, name):
 
 
 def test_script_note_goes_away_once_the_macro_changes():
-    """WHY: In game (2026-10-17) "Runs psi\T1_Projected_Cryokinesis.cmd: a macro saved here replaces it" stayed after
+    """WHY: In game (2026-10-17) "Runs psi\\T1_Projected_Cryokinesis.cmd: a macro saved here replaces it" stayed after
     a step was added and saved, though the key then ran the new macro. Editing resets the label; saving forgets the
     script the file used to run."""
     ui = (SCRIPTS / "psi_mfd_ui.nut").read_text(encoding="utf-8")

@@ -78,6 +78,35 @@ function PsiMfdWriteFile(path, text) {
 	output.close();
 }
 
+// The MFD's own settings, in the save folder so they hold for every save: one "name value" line each.
+const PSI_MFD_SETTINGS = "psi_mfd_settings.txt";
+ND.psiMfdWormSkinSwap <- null;   // null until read
+
+// Whether every psi_autocast macro wears the worm skin while it runs (psi_mfd_armor.nut). Off until the player
+// ticks it: swapping armor is a trick each player chooses for themselves (author's decision 2026-10-21).
+function PsiMfdWormSkinSwapOn() {
+	if (ND.psiMfdWormSkinSwap == null) {
+		ND.psiMfdWormSkinSwap = false;
+		try {
+			ND.psiMfdWormSkinSwap = PsiMfdReadFile(PSI_MFD_ROOT + PSI_MFD_FOLDER + "\\" + PSI_MFD_SETTINGS).find("worm_skin_swap 1") != null;
+		}
+		catch (e) {}   // no settings file yet: off
+	}
+	return ND.psiMfdWormSkinSwap;
+}
+
+// Saves the worm skin swap choice; returns null, or the reason it couldn't.
+function PsiMfdSetWormSkinSwap(on) {
+	try {
+		PsiMfdWriteFile(PSI_MFD_ROOT + PSI_MFD_FOLDER + "\\" + PSI_MFD_SETTINGS, "worm_skin_swap " + (on ? 1 : 0) + "\r\n");
+	}
+	catch (e) {
+		return "Couldn't save the setting";
+	}
+	ND.psiMfdWormSkinSwap = on;
+	return null;
+}
+
 // user.bnd's text, or null if it can't be read.
 function PsiMfdReadBnd() {
 	foreach (path in [PSI_MFD_ROOT + "user.bnd", "user:/user.bnd"]) {

@@ -1,6 +1,5 @@
-// psi_mfd_maintain: development tool, never in a release build (build.py --dev only).
-// Uses one maintenance tool from the inventory on the weapon in hand:
-//   summon_obj PsiMfdMaintainWeapon
+// psi_mfd_maintain: uses one maintenance tool from the inventory on the weapon in hand. K runs it by default
+// (bind k "summon_obj PsiMfdMaintainWeapon"); it works with or without psi_autocast.
 // A script can't send the maintenance tool the frob it gets when dropped on a weapon, so this applies the rules of
 // SCP's scpWrench, the Maintenance Tool's script with SCP on (mods\scp.kpf, sq_scripts\scpScript.nut). Nothing
 // happens to a gun that's unresearched, broken, needs more Maintenance than the player's base skill, or is above
@@ -14,7 +13,7 @@ const PSI_MFD_MAINT_UNUSED_ABOVE = 90;   // above this condition % the tool isn'
 function PsiMfdMaintainSay(strID, text, value = "") {
 	local found = Data.GetString("misc", strID, "");
 	local msg = found != "" ? format(found, value) : text;
-	print("[psi_maintain] " + msg);
+	print("[psi_mfd] maintenance: " + msg);
 	ShockGame.AddText(msg, "Player");
 }
 
@@ -42,7 +41,7 @@ function PsiMfdUseUpOne(obj) {
 function PsiMfdMaintainHeldWeapon() {
 	local weapon = ShockGame.Equipped(ePlayerEquip.kEquipWeapon);
 	if (!weapon) {
-		print("[psi_maintain] no weapon in hand");
+		print("[psi_mfd] maintenance: no weapon in hand");
 		return;
 	}
 	if (!ShockGame.ValidGun(weapon)) {
@@ -51,7 +50,7 @@ function PsiMfdMaintainHeldWeapon() {
 	}
 	local tool = PsiMfdFindMaintenanceTool(ND.g_PlayerCore.GetPlayer());
 	if (!tool) {
-		print("[psi_maintain] no maintenance tool in your inventory");
+		print("[psi_mfd] maintenance: no maintenance tool in your inventory");
 		ShockGame.AddText("No maintenance tool in your inventory.", "Player");
 		return;
 	}
@@ -77,7 +76,7 @@ function PsiMfdMaintainHeldWeapon() {
 		PsiMfdUseUpOne(tool);
 		local msg = Data.GetObjString(weapon, "objshort") + ": condition " + hp.tointeger() + "% to "
 			+ Property.Get(weapon, "GunState", "Condition (%)").tointeger() + "%";
-		print("[psi_maintain] " + msg + " (Maintenance " + skill + ")");
+		print("[psi_mfd] maintenance: " + msg + " (Maintenance " + skill + ")");
 		ShockGame.AddText(msg, "Player");
 	}
 }
@@ -94,7 +93,7 @@ class PsiMfdMaintainWeapon extends SqRootScript {
 			PsiMfdMaintainHeldWeapon();
 		}
 		catch (e) {
-			print("[psi_maintain] error: " + e);
+			print("[psi_mfd] maintenance error: " + e);
 		}
 		Object.Destroy(self);
 	}

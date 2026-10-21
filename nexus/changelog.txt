@@ -4,6 +4,11 @@ Changelog for Nexus (Mod page > Logs, one entry per version). Plain text: one ch
 The MFD sets up every free key at once (on the first load, and later for keys you free in Controls), each with a file: one restart, ever, instead of one per key.
 A macro key with no macro yet shows "psi_mfd_no_macro_yet" in the console when pressed.
 Works with psi_autocast 1.4, whose key files are .txt (the cancel key and starter keys point at the new names).
+Worm skin swap, off until you tick it in the MFD: while a macro runs you wear the worm skin, if you have one, and your armor goes back on half a second after the last macro ends. With no armor on before, the worm skin stays on.
+After Molecular Duplication, Electron Cascade or Molecular Transmutation, your armor waits while the cursor is up, so the worm skin is still on when you click the item.
+K uses a maintenance tool on the weapon in hand, by SCP's rules: 10% condition per point of Maintenance skill, up to 100%. It does nothing to a gun above 90%, broken, unresearched, or needing more skill.
+K is no longer a macro key. The MFD makes K the maintenance key when K is free, or when its macro file has no macro; a K that holds a macro is left as it is.
+setupPsiMfd.bat binds K to the maintenance tool when K is free.
 
 1.2
 Keyboard picker: click Keys (or the key name) to choose a key from a keyboard showing what every key does.

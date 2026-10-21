@@ -49,8 +49,13 @@ ND.psiMfdKeyboard <- [
 ND.psiMfdNever <- ["enter", "keypad_enter", "esc", "tab", "space", "backspace", "caps_lock", "shift", "ctrl", "alt",
 	"keypad_plus", "`", "-", "="];
 
+// The maintenance key: K uses a maintenance tool on the weapon in hand (psi_mfd_maintain.nut), so it isn't a macro
+// key (author's decision 2026-10-21). Bound on load when it's free, or a macro key with no macro yet.
+ND.psiMfdMaintainKey <- "k";
+ND.psiMfdMaintainCommand <- "summon_obj PsiMfdMaintainWeapon";
+
 // Exactly setupPsiMfd.bat's MACRO_CANDIDATES (a test keeps them equal): keys the script can bind later.
-ND.psiMfdCandidates <- ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k", "l", "m", "n", "o", "p", "q", "r", "s", "t",
+ND.psiMfdCandidates <- ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j", "l", "m", "n", "o", "p", "q", "r", "s", "t",
 	"u", "v", "w", "x", "y", "z", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "f1", "f2", "f3", "f4", "f5", "f6",
 	"f7", "f8", "f9", "f10", "f11", "f12", "keypad_minus", "keypad_del", "keypad_ins", "keypad_center", "keypad_slash",
 	"ins", "del", "home", "end", "pgup", "pgdn",
@@ -85,10 +90,11 @@ function PsiMfdAlsoOn(name, bindings) {
 	return others;
 }
 
-// Keys these mods need (the wheel, psi_autocast's cancel). Keys running other psi_autocast scripts are ordinary
-// game keys (user decision 2026-10-16).
+// Keys these mods need (the wheel, psi_autocast's cancel, the maintenance tool). Keys running other psi_autocast
+// scripts are ordinary game keys (user decision 2026-10-16).
 function PsiMfdIsModCommand(lower) {
-	return startswith(lower, "summon_obj psimfdwheel") || lower.find("cancel_macro") != null;
+	return startswith(lower, "summon_obj psimfdwheel") || lower.find("cancel_macro") != null
+		|| lower == ND.psiMfdMaintainCommand.tolower();
 }
 
 // R11 state, R12 content and R14 marks for one key. fileState: lower-case file name -> "has" / "empty" / "missing".
@@ -113,6 +119,8 @@ function PsiMfdKeyState(name, bindings, fileState) {
 	}
 	else if (PsiMfdIsModCommand(lower))
 		s.state = "mod";
+	else if (name == ND.psiMfdMaintainKey && !b)
+		s.state = "reserved";
 	else if (candidate) {
 		s.state = b ? "game" : "free";
 		s.selectable = true;
@@ -160,6 +168,8 @@ function PsiMfdModText(lower, command) {
 		return "scrolls the MFD";
 	if (lower.find("cancel_macro") != null)
 		return "psi_autocast cancel";
+	if (lower == ND.psiMfdMaintainCommand.tolower())
+		return "uses a maintenance tool on the weapon in hand";
 	return "psi_autocast (" + command + ")";
 }
 
@@ -185,7 +195,7 @@ function PsiMfdKeyHover(name, ks, bindings) {
 		case "free": text += ks.content == "has" ? "free, has a macro: Save it here; it works from your next start" : "free: Save a macro here; it works from your next start"; break;
 		case "game": text += command + (ks.marks.find("!") != null ? "" : " (clear it in Controls for a macro)"); break;
 		case "mod": text += PsiMfdModText(b.lower, command); break;
-		case "reserved": text += "reserved for psi_autocast cancel"; break;
+		case "reserved": text += name == "keypad_plus" ? "reserved for psi_autocast cancel" : "reserved for the maintenance tool"; break;
 		case "never": text += (b ? command + "; " : "") + "never used for macros"; break;
 		default: text += (b ? command + "; " : "") + "not offered for macros";
 	}

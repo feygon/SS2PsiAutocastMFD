@@ -336,6 +336,12 @@ class PsiMfdPanel extends ND.UiBase {
 		AddChild(PsiMfdButton("", 80, controlsY, this, "CycleDraw", null, @() "Amp wait: " + (m_macro ? m_macro.drawMs : 800) + "ms"));
 		AddChild(PsiMfdButton("Add hypo", 172, controlsY, this, "AddHypo"));
 		AddChild(PsiMfdButton("", 232, controlsY, this, "CycleFinish", null, @() "Finish: " + FinishText()));
+		// For every macro, not the one shown: so it sits apart, at the right end of the row.
+		local w = int_ref();
+		local h = int_ref();
+		ShockOverlay.GetStringSize("Worm skin swap: off", w, h);
+		AddChild(PsiMfdButton("", width - 13 - w.tointeger(), controlsY, this, "ToggleWormSkin", null,
+			@() "Worm skin swap: " + (PsiMfdWormSkinSwapOn() ? "on" : "off")));
 		AddChild(PsiMfdButton("", 6, controlsY + 13, this, "ToggleAutoHypo", null, @() "Auto psi hypo: " + (m_macro && m_macro.autoHypo ? "on" : "off")));
 		AddChild(PsiMfdKeySelector(this, width - 214, controlsY + 12));
 		AddChild(PsiMfdButton("Clear", width - 76, controlsY + 13, this, "Clear"));
@@ -521,6 +527,14 @@ class PsiMfdPanel extends ND.UiBase {
 		Changed();
 	}
 
+	// The worm skin swap: while any psi_autocast macro runs, the worm skin is worn (psi_mfd_armor.nut). Off until
+	// the player ticks it; kept in psi_macros\psi_mfd_settings.txt.
+	function ToggleWormSkin(unused) {
+		local on = !PsiMfdWormSkinSwapOn();
+		local problem = PsiMfdSetWormSkinSwap(on);
+		SetStatus(problem ? problem : "All macros: worm skin swap " + (on ? "on" : "off"));
+	}
+
 	function ToggleAutoHypo(unused) {
 		if (!Editable())
 			return;
@@ -692,9 +706,10 @@ function PsiMfdIsFree(key, bindings, add) {
 }
 
 // The keys to bind on load, as [[key, command], ...]: an open key if none opens the MFD, keypad + for
-// psi_autocast's cancel, G and J with psi_autocast's starter casts, and every other free candidate as a macro key.
-// Only keys with no binding at all: game keys, combos and the player's own bindings are never touched.
-function PsiMfdKeysToBind(bindings) {
+// psi_autocast's cancel, K for the maintenance tool, G and J with psi_autocast's starter casts, and every other free
+// candidate as a macro key. Only keys with no binding at all: game keys, combos and the player's own bindings are
+// never touched. takeK: K is a macro key whose file has no macro yet (set up before K was the maintenance key).
+function PsiMfdKeysToBind(bindings, takeK = false) {
 	local add = [];
 	local hasOpen = false;
 	foreach (key, b in bindings) {
@@ -713,6 +728,8 @@ function PsiMfdKeysToBind(bindings) {
 	}
 	if (PsiMfdIsFree("keypad_plus", bindings, add))
 		add.push(["keypad_plus", "\"run psi\\actions\\cancel_macro.txt\""]);
+	if (takeK || PsiMfdIsFree(ND.psiMfdMaintainKey, bindings, add))
+		add.push([ND.psiMfdMaintainKey, "\"" + ND.psiMfdMaintainCommand + "\""]);
 	local keys = ["g", "j"];
 	keys.extend(ND.psiMfdCandidates);
 	foreach (key in keys) {
@@ -743,7 +760,14 @@ function PsiMfdEnsureKeys() {
 	local bindings = PsiMfdBindings();
 	if (bindings == null)
 		return;
-	local add = PsiMfdKeysToBind(bindings);
+	// K became the maintenance key in 1.3: a K macro key set up before then is taken over only if it has no macro.
+	local takeK = false;
+	local k = ND.psiMfdMaintainKey in bindings ? bindings[ND.psiMfdMaintainKey] : null;
+	if (k && !k.combo) {
+		local kFile = PsiMfdMacroFile(k.lower);
+		takeK = kFile != null && PsiMfdMacroFileState(kFile) == "missing";
+	}
+	local add = PsiMfdKeysToBind(bindings, takeK);
 	// Every macro key gets a file: a placeholder where there's none yet (keys already bound, and new ones below).
 	foreach (key in PsiMfdMacroKeys(bindings)) {
 		local file = PSI_MFD_ROOT + PSI_MFD_FOLDER + "\\" + key.file;
@@ -767,11 +791,25 @@ function PsiMfdEnsureKeys() {
 		print("[psi_mfd] " + failed + ": couldn't set up keys");
 		return;
 	}
-	foreach (pair in add)
+	local macroKeys = 0;
+	local maintenance = false;
+	foreach (pair in add) {
 		ND.psiMfdPending[pair[0]] <- true;
+		if (pair[1].find("psi_macros") != null)
+			macroKeys++;
+		if (pair[0] == ND.psiMfdMaintainKey)
+			maintenance = true;
+	}
+	local parts = [];
+	if (maintenance)
+		parts.push(PsiMfdKeyName(ND.psiMfdMaintainKey) + " uses a maintenance tool on the weapon in hand");
+	if (macroKeys)
+		parts.push(macroKeys + " more " + (macroKeys == 1 ? "key is" : "keys are") + " ready for macros");
+	if (!parts.len())
+		parts.push(add.len() + " more " + (add.len() == 1 ? "key is" : "keys are") + " set up");
 	local message = openKey
 		? "psi_autocast_mfd is set up: restart the game once, then press " + PsiMfdKeyName(openKey) + " to open the psi MFD"
-		: "psi_autocast_mfd: " + add.len() + " more keys are ready for macros from your next start";
+		: "psi_autocast_mfd, from your next start: " + parts[0] + (parts.len() > 1 ? ", and " + parts[1] : "");
 	print("[psi_mfd] " + message);
 	try {
 		ShockGame.AddText(message, "Player", 15000);

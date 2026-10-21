@@ -23,22 +23,28 @@ The numbers are read from the running game, so they follow SCP if you use it.
 
 Every key that isn't set by the game is a macro key, ready on the next keypress after you save. Keys you free later in the game's Controls menu become macro keys from your next start. Keys the game uses stay with the Controls menu.
 
+## Extras
+
+- **Worm skin swap** (off until you tick it in the MFD): while any macro runs, you wear the worm skin, if you have one, and your own armor goes back on afterwards. After Molecular Duplication, Electron Cascade or Molecular Transmutation, it waits while the cursor is up, so the worm skin is still on when you click the item.
+- **K uses a maintenance tool** on the weapon in your hand, with SCP's maintenance rules.
+
 ## Install
 
 1. Install and enable psi_autocast 1.4 or later.
 2. Extract this zip into the **game folder**, the one with `SystemShock2Remastered.exe`. It adds `mods\psi_autocast_mfd.kpf`.
 3. Choose **New Game → Mods**, add **psi_autocast_mfd** (keep psi_autocast), **Apply** and start. Once the first level loads, load your own save, then make a regular save.
-4. On that first load the MFD sets up your keys: keypad * to open it, keypad + to cancel a running macro, and every free key as a macro key. Restart the game once when it tells you to, then press keypad *.
+4. On that first load the MFD sets up your keys: keypad * to open it, keypad + to cancel a running macro, K for the maintenance tool, and every free key as a macro key. Restart the game once when it tells you to, then press keypad *.
 
 **In a new game, wait until you're through training before using the MFD:** macros don't take before then.
 
 ## Setting keys up yourself (optional)
 
-- **`setupPsiMfd.bat`**, from the [GitHub release](https://github.com/feygon/SS2PsiAutocastMFD/releases/latest), sets up many keys at once with the game closed. It also gives G and J psi_autocast's two starter casts as macros you can edit, and asks (y/n) about letting the mouse wheel scroll the MFD.
+- **`setupPsiMfd.bat`**, from the [GitHub release](https://github.com/feygon/SS2PsiAutocastMFD/releases/latest), sets up many keys at once with the game closed. It also gives G and J psi_autocast's two starter casts as macros you can edit, binds K to the maintenance tool if K is free, and asks (y/n) about letting the mouse wheel scroll the MFD.
 - **By hand:** with the game closed, add lines to `user.bnd` (in `%USERPROFILE%\Saved Games\Nightdive Studios\System Shock 2 Remastered\`):
 
 ```
 bind keypad_star "summon_obj PsiMfd"
+bind k "summon_obj PsiMfdMaintainWeapon"
 bind keypad_minus "run user:/psi_macros\Macro_keypad_minus.cmd"
 ```
 
@@ -53,7 +59,7 @@ In a save without psi_autocast_mfd enabled, the wheel then doesn't switch weapon
 
 ## What it writes
 
-Macros go in `Saved Games\Nightdive Studios\System Shock 2 Remastered\psi_macros\`, one small text file per key. Key bindings go in `user.bnd`, backed up first as `user.bnd.mfd_backup`. It doesn't touch the game folder.
+Macros go in `Saved Games\Nightdive Studios\System Shock 2 Remastered\psi_macros\`, one small text file per key, and the worm skin swap choice in `psi_mfd_settings.txt` there. Key bindings go in `user.bnd`, backed up first as `user.bnd.mfd_backup`. It doesn't touch the game folder.
 
 ## Uninstall
 

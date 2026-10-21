@@ -69,16 +69,37 @@ def test_release_zip_contents():
     z = release_zip()
     assert sorted(z.namelist()) == ["mods/psi_autocast_mfd.kpf", "psi/psi_autocast_mfd_LICENSE", "psi/psi_autocast_mfd_README.md"]
     kpf = zipfile.ZipFile(io.BytesIO(z.read("mods/psi_autocast_mfd.kpf")))
-    assert sorted(kpf.namelist()) == ["modinfo.json", "sq_scripts/psi_mfd_data.nut", "sq_scripts/psi_mfd_keyboard.nut",
-                                     "sq_scripts/psi_mfd_macros.nut", "sq_scripts/psi_mfd_ui.nut"]
+    assert sorted(kpf.namelist()) == ["modinfo.json", "sq_scripts/psi_mfd_armor.nut", "sq_scripts/psi_mfd_data.nut",
+                                     "sq_scripts/psi_mfd_keyboard.nut", "sq_scripts/psi_mfd_macros.nut",
+                                     "sq_scripts/psi_mfd_maintain.nut", "sq_scripts/psi_mfd_ui.nut"]
 
 
 def test_release_kpf_has_no_dev_output():
-    """WHY: The dev probe and the overlay-number printout must never reach players."""
+    """WHY: The dev probe, the overlay-number printout and the dev cheats (bullets, respec, armor console tools)
+    must never reach players. The worm skin option and the maintenance tool do."""
     kpf = zipfile.ZipFile(io.BytesIO(release_zip().read("mods/psi_autocast_mfd.kpf")))
     for name in kpf.namelist():
         text = kpf.read(name).decode("utf-8")
         assert "PsiProbe" not in text and "Dev: overlay numbers" not in text, name
+        for dev in ("PsiMfdBullets", "PsiMfdRespec", "PsiMfdWearArmor", "PsiMfdRememberArmor", "PsiMfdRestoreArmor"):
+            assert dev not in text, f"{name}: {dev}"
+
+
+def test_worm_skin_swap_is_off_until_the_player_ticks_it():
+    """
+    WHY: Swapping armor during macros is a trick each player chooses (author's decision 2026-10-21), so it's off
+    until ticked in the MFD, and the choice is kept in psi_macros\\psi_mfd_settings.txt across sessions.
+    """
+    armor = strip_strings_and_comments(nut("psi_mfd_armor.nut"))
+    started = armor.split("function PsiMacroStarted(")[1].split("\nfunction ")[0]
+    assert "if (!PsiMfdWormSkinSwapOn())" in started
+    assert started.find("if (!PsiMfdWormSkinSwapOn())") < started.find("PsiMfdSwapArmor(")
+    macros = nut("psi_mfd_macros.nut")
+    on = macros.split("function PsiMfdWormSkinSwapOn()")[1].split("\n}")[0]
+    assert "ND.psiMfdWormSkinSwap = false;" in on and '.find("worm_skin_swap 1") != null' in on
+    assert 'const PSI_MFD_SETTINGS = "psi_mfd_settings.txt";' in macros
+    ui = nut("psi_mfd_ui.nut")
+    assert '"ToggleWormSkin"' in ui and "function ToggleWormSkin(" in ui and '"Worm skin swap: "' in ui
 
 
 def test_modinfo_requires_psi_autocast():
@@ -114,7 +135,8 @@ def test_io_calls_are_global():
         assert not re.search(r"(?<![:\w.])file\s*\(", bare), f"{name}: call ::file(...), not file(...)"
 
 
-@pytest.mark.parametrize("name", ["psi_mfd_data.nut", "psi_mfd_keyboard.nut", "psi_mfd_macros.nut", "psi_mfd_ui.nut"])
+@pytest.mark.parametrize("name", ["psi_mfd_armor.nut", "psi_mfd_data.nut", "psi_mfd_keyboard.nut", "psi_mfd_macros.nut",
+                                  "psi_mfd_maintain.nut", "psi_mfd_ui.nut"])
 def test_brackets_balance(name):
     """WHY: An unbalanced bracket is a compile error that only shows in kexengine.log."""
     bare = strip_strings_and_comments(nut(name))
@@ -227,7 +249,7 @@ def test_armor_tool_takes_off_the_old_armor_first():
     WHY: Equipping straight over a held item is what left the amp stuck. The armor tool must empty the armor
     slot before it puts anything in it, and only ever touch the armor slot.
     """
-    calls = call_args(strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8")),
+    calls = call_args(strip_strings_and_comments((SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8")),
                       "ShockGame.Equip")
     assert calls and calls[0] == ["PSI_MFD_ARMOR_SLOT", "null"]
     assert all(args[0] == "PSI_MFD_ARMOR_SLOT" for args in calls)
@@ -238,7 +260,7 @@ def test_armor_tool_puts_the_new_armor_on_before_adding_the_old_back():
     WHY: With the armor slot empty, the old armor came back in the slot (Contains 1002) after AddInvObj
     (2026-10-21), so the swap stopped. With the new armor already in the slot, the old one has to go to a cell.
     """
-    code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    code = strip_strings_and_comments((SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
     wear_new = code.find("ShockGame.Equip(PSI_MFD_ARMOR_SLOT, armor)")
     add_old = code.find("ShockGame.AddInvObj(worn)")
     assert wear_new != -1 and add_old != -1 and wear_new < add_old
@@ -250,18 +272,18 @@ def test_remembered_armor_is_a_campaign_quest_variable():
     "restore". Campaign quest variables are saved with the game and kept across levels (the game's achievement
     code keeps its counters that way).
     """
-    code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor_tools.nut").read_text(encoding="utf-8"))
     calls = [args for args in call_args(code, "Quest.Set") if args[0] == "PSI_MFD_SAVED_ARMOR"]
     assert len(calls) >= 2
     assert all(len(args) == 3 and args[2] == "eQuestDataType.kQuestDataCampaign" for args in calls)
 
 
 @needs_main
-def test_dev_armor_tool_defines_the_hooks_psi_autocast_calls():
+def test_mfd_defines_the_hooks_psi_autocast_calls():
     """WHY: psi_autocast calls its macro hooks by name; a misspelt name here would silently never run."""
     called = set(re.findall(r'PsiMacroHook\("(\w+)", self\)', (MAIN / "mod/sq_scripts/psi_autocast.nut").read_text(encoding="utf-8")))
     assert called == {"PsiMacroStarted", "PsiMacroEnded"}
-    armor = (DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8")
+    armor = (SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8")
     for name in called:
         assert re.search(r"^function " + name + r"\(\w+\) \{", armor, re.M), name
 
@@ -271,7 +293,7 @@ def test_armor_goes_back_after_a_delay_not_at_the_release():
     WHY: Debug.Command only queues console commands, so when a cast's end hook runs, its "fire_weapon 0" hasn't
     happened yet: swapping armor at that moment would take the worm skin off before the power goes off.
     """
-    armor = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    armor = strip_strings_and_comments((SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
     ended = armor.split("function PsiMacroEnded(")[1].split("\nfunction ")[0]
     assert "Object.Create(" in ended
     assert "ShockGame.Equip" not in ended and "PsiMfdSwapArmor(" not in ended
@@ -283,7 +305,7 @@ def test_armor_back_waits_for_the_click_after_a_target_power():
     WHY: Half a second after Molecular Transmutation's chain ended, the worm skin was already off before the
     player could click the item (2026-10-21). After a target power the armor waits while the cursor is up.
     """
-    armor = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    armor = strip_strings_and_comments((SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
     ended = armor.split("function PsiMacroEnded(")[1].split("\nfunction ")[0]
     assert "ND.psiLastReleasedPower" in ended and "ND.psiMfdTargetPowers" in ended
     back = armor.split("class PsiMfdArmorBack extends SqRootScript")[1].split("\nclass ")[0]
@@ -297,17 +319,17 @@ def test_the_item_click_ends_the_wait_when_the_inventory_changes():
     (2026-10-21). The click changes what the player holds (the item turns into nanites; a copy appears), so a
     change in the inventory ends the wait at once.
     """
-    armor = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    armor = strip_strings_and_comments((SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
     back = armor.split("class PsiMfdArmorBack extends SqRootScript")[1].split("\nclass ")[0]
     assert "PsiMfdInventoryPrint(" in back and 'GetData("")' in back
     inventory = top_level_functions(armor)["PsiMfdInventoryPrint"]
-    assert '"StackCount"' in (DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8")
+    assert '"StackCount"' in (SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8")
     assert "sLink(l).dest" in inventory and ".sort()" in inventory
 
 
 def test_restoring_consumes_the_memory_only_once_that_armor_is_on():
     """WHY: If the remembered armor isn't in the inventory, the memory stays, to restore after picking it up."""
-    code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor_tools.nut").read_text(encoding="utf-8"))
     restore = code.split("class PsiMfdRestoreArmor")[1].split("\nclass ")[0]
     assert re.search(r"if \(PsiMfdWearArmorNumber\(\w+\)\)\s*Quest\.Set\(PSI_MFD_SAVED_ARMOR, 0,", restore)
 
@@ -384,7 +406,7 @@ def test_dev_armor_archetypes_exist(kpf, member):
     for obj, value in gam_records(data, table, "P$SymName"):
         n = struct.unpack_from("<I", value, 0)[0]
         names.add(value[4:4 + n].split(b"\0")[0].decode("latin-1"))
-    listed = (DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8").split("ND.psiMfdArmors <- [")[1].split("]")[0]
+    listed = (DEV_SCRIPTS / "psi_mfd_armor_tools.nut").read_text(encoding="utf-8").split("ND.psiMfdArmors <- [")[1].split("]")[0]
     armors = re.findall(r'"([^"]+)"', listed)
     assert armors == ["Light Armor", "Medium Armor", "Heavy Armor", "Vacc Suit", "Reflec Armor", "Worm Skin"]
     for armor in armors:
@@ -402,7 +424,7 @@ def test_maintenance_follows_scps_wrench_rules():
     assert "hp + playerMaintSkill * 10.0, 0.0, 100.0" in wrench and "hp > 90" in wrench
     assert 'Property.Get("Player", "BaseTechDesc", "Maintain")' in wrench
     assert 'Property.Get(fixObj, "GunState", "Condition (%)")' in wrench
-    tool = (DEV_SCRIPTS / "psi_mfd_maintain.nut").read_text(encoding="utf-8")
+    tool = (SCRIPTS / "psi_mfd_maintain.nut").read_text(encoding="utf-8")
     assert "const PSI_MFD_MAINT_PER_SKILL = 10.0;" in tool and "const PSI_MFD_MAINT_UNUSED_ABOVE = 90;" in tool
     for read in ('Property.Get("Player", "BaseTechDesc", "Maintain")', 'Property.Get(weapon, "ReqTechDesc", "Maintain")',
                  'Property.Get(weapon, "GunState", "Condition (%)")', 'Property.Set(weapon, "GunState", "Condition (%)", '):
@@ -418,7 +440,7 @@ def test_maintenance_tool_archetype_exists(kpf, member):
     for obj, value in gam_records(data, table, "P$SymName"):
         n = struct.unpack_from("<I", value, 0)[0]
         names.add(value[4:4 + n].split(b"\0")[0].decode("latin-1"))
-    assert 'Object.InheritsFrom(obj, "Maintenance Tool")' in (DEV_SCRIPTS / "psi_mfd_maintain.nut").read_text(encoding="utf-8")
+    assert 'Object.InheritsFrom(obj, "Maintenance Tool")' in (SCRIPTS / "psi_mfd_maintain.nut").read_text(encoding="utf-8")
     assert "Maintenance Tool" in names
 
 
@@ -432,7 +454,7 @@ def test_target_powers_are_the_gamesys_item_targeting_ones(kpf, member):
     data, table = gam_chunks(kpf, member)
     type4 = sorted({struct.unpack_from("<i", v, 0)[0] for _, v in gam_records(data, table, "P$PsiPower")
                     if struct.unpack_from("<i", v, 4)[0] == 4})
-    listed = (DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8").split("ND.psiMfdTargetPowers <- [")[1].split("]")[0]
+    listed = (SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8").split("ND.psiMfdTargetPowers <- [")[1].split("]")[0]
     assert [int(n) for n in listed.split(",")] == type4 == [17, 18, 29]
 
 
@@ -560,12 +582,23 @@ def test_bat_fresh_file(tmp_path):
     new = added(before, lines(tmp_path))
     assert 'bind keypad_star "summon_obj PsiMfd"' in new
     assert 'bind keypad_plus "run psi\\actions\\cancel_macro.txt"' in new
+    assert 'bind k "summon_obj PsiMfdMaintainWeapon"' in new
     macro_keys = [l.split()[1] for l in new if "psi_macros" in l]
     assert macro_keys[:3] == ["a", "b", "c"], "letters come first"
-    assert "g" not in macro_keys and "j" not in macro_keys
-    assert len(macro_keys) == 24 + 10 + 12 + 5 + 6 + 12 + 8
+    assert "g" not in macro_keys and "j" not in macro_keys and "k" not in macro_keys
+    assert len(macro_keys) == 23 + 10 + 12 + 5 + 6 + 12 + 8
     assert (tmp_path / "user.bnd.before_mfd_1").exists()
     assert "Done." in out
+
+
+def test_bat_leaves_another_k_binding_alone(tmp_path):
+    """WHY: K is the maintenance key only when it's free: a K the player set is never taken."""
+    before = ['bind k +lean_left']
+    (tmp_path / "user.bnd").write_bytes(("\r\n".join(before) + "\r\n").encode())
+    out = run_bat(tmp_path)
+    assert not [l for l in added(before, lines(tmp_path)) if l.split()[1] == "k"]
+    assert "bind k +lean_left" in lines(tmp_path)
+    assert "Maintenance key: k already has another binding" in out
 
 
 def test_bat_never_uses_ruled_out_keys(tmp_path):

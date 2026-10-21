@@ -4,6 +4,7 @@ rem   - starter keys:  G and J run Macro_g.cmd / Macro_j.cmd holding psi_autocas
 rem   - an open key:   bind <key> "summon_obj PsiMfd"
 rem   - macro keys:    bind <key> "run user:/psi_macros\Macro_<key>.cmd"   (every free key in the list below)
 rem   - keypad +:      reserved for psi_autocast's cancel key (bind keypad_plus "run psi\actions\cancel_macro.txt")
+rem   - K:             the maintenance key, if free: uses a maintenance tool on the weapon in hand (bind k "summon_obj PsiMfdMaintainWeapon")
 rem A key counts as free when user.bnd has no plain binding for it. Free keys are used without asking.
 rem A bound key is offered (y/n, one at a time) only when the game's defaults don't bind it and its command is also on
 rem another keyboard or mouse binding, so answering y never loses a command. No other binding is ever changed.
@@ -16,7 +17,7 @@ rem , ; = split a batch list, and / \ can't be in a file name; :key_of turns a w
 rem macro file keeps the word (Macro_comma.cmd), as the MFD expects.
 rem keypad_star, keypad_minus and keypad_del are proven in game; the rest are names from the game's key table.
 set "OPEN_CANDIDATES=keypad_star keypad_slash"
-set "MACRO_CANDIDATES=a b c d e f g h i j k l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 keypad_minus keypad_del keypad_ins keypad_center keypad_slash ins del home end pgup pgdn keypad_home keypad_up keypad_pgup keypad_left keypad_right keypad_end keypad_down keypad_pgdn up down left right comma period slash semicolon apostrophe lbracket rbracket backslash"
+set "MACRO_CANDIDATES=a b c d e f g h i j l m n o p q r s t u v w x y z 1 2 3 4 5 6 7 8 9 0 f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 keypad_minus keypad_del keypad_ins keypad_center keypad_slash ins del home end pgup pgdn keypad_home keypad_up keypad_pgup keypad_left keypad_right keypad_end keypad_down keypad_pgdn up down left right comma period slash semicolon apostrophe lbracket rbracket backslash"
 rem Every plain keyboard and mouse key the game binds by default (base.kpf, defaults\shock.bnd, game 1.3.4984). These are never offered for replacing.
 set "DEFAULT_KEYS=' - 0 1 2 3 4 5 6 7 8 9 = \ ` a alt b backspace c ctrl d del down e esc f f1 f2 f3 f4 f5 f6 f7 f8 f9 f10 f11 f12 h keypad_center keypad_down keypad_end keypad_home keypad_left keypad_pgdn keypad_pgup keypad_right keypad_up l left m mouse1 mouse2 mouse3 mouse_axisx mouse_axisy mouse_wheel_down mouse_wheel_up n o p pgdn pgup q r right s shift space tab u up w z"
 
@@ -104,6 +105,23 @@ if errorlevel 1 (
         echo   run psi\actions\cancel_macro.txt  if you want it on a key.
     ) else (
         echo Cancel key: keypad_plus already set up.
+    )
+)
+
+rem K is the maintenance key: bind it if it's free, never use it for macros.
+findstr /i /b /c:"bind k " "%BND%" >nul
+if errorlevel 1 (
+    >> "%NEW_BND%" echo bind k "summon_obj PsiMfdMaintainWeapon"
+    set "TAKEN=!TAKEN!k "
+    set /a ADDED+=1
+    echo Maintenance key: k  uses a maintenance tool on the weapon in hand.
+) else (
+    findstr /i /b /c:"bind k " "%BND%" | findstr /i /c:"psimfdmaintainweapon" >nul
+    if errorlevel 1 (
+        echo Maintenance key: k already has another binding, left alone. The maintenance tool is
+        echo   summon_obj PsiMfdMaintainWeapon  if you want it on another key.
+    ) else (
+        echo Maintenance key: k already set up.
     )
 )
 

@@ -67,6 +67,16 @@
 - **Default bindings:** `base.kpf` → `defaults/shock.bnd` (the game's own defaults; `defaults/default.bnd` has only the console key). setupPsiMfd.bat copies its plain keyboard and mouse keys into `DEFAULT_KEYS`; a test checks the copy against the game file.
 - **Never `open(path, "wb").write(build())`** for user.bnd: `open` truncates before `build()` runs, so an exception leaves an empty file. Build the bytes first (it happened once, 2026-10-16; restored from the backup).
 
+## Shipped in 1.3 from the dev tools (2026-10-21)
+
+- **Worm skin swap** (`mod/sq_scripts/psi_mfd_armor.nut`): a player option, off until ticked. The **Worm skin swap** button is at the right end of the first row of controls; its status message says it applies to all macros. The choice is kept in `psi_macros\psi_mfd_settings.txt` (`worm_skin_swap 1`), read once per session. The settings functions live in `psi_mfd_macros.nut`: `psi_mfd_armor.nut` compiles before it, so it couldn't use its path consts.
+- **Maintenance tool** (`mod/sq_scripts/psi_mfd_maintain.nut`) on K by default.
+  - **K isn't a macro key any more:** it's out of `ND.psiMfdCandidates` and setupPsiMfd.bat's list.
+  - **When the MFD binds K on load:** when K is free, or when it's a macro key whose file has no macro. A K that holds a macro is left alone.
+  - **How K shows in the keyboard view:** bound to it, "used by these mods"; unbound, "reserved for the maintenance tool".
+- **Still dev-only:** bullets, respec, the probe, and the armor console tools (`dev/sq_scripts/psi_mfd_armor_tools.nut`: wear, remember, restore).
+- **Not yet checked in game:** the button and its saved setting, and K's binding on load (free, and taken over from an empty macro key).
+
 ## Dev tools and inventory facts (2026-10-20)
 
 - **`Property.Set` takes four arguments:** object, property, field, value. A property without named fields takes `""` as its field, as the game's debug menu writes `PsiPowerDesc`. Three arguments failed with "expected 3 parameters but got 4"; the respec tool's four-argument write then worked.
