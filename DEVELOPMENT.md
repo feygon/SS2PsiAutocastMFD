@@ -79,7 +79,9 @@
   - 2026-10-21, working order: `Equip(slot, null)` left the old armor "not held", so the player lets go of it entirely and `RemoveFromContainer` has nothing left to do. `Equip(slot, new)` moved the new armor from its cell to 1002. `AddInvObj(old)` returned `true` and put the old armor in cell 11, the cell the new armor had left. Worked both ways (worm skin to hazard suit and back), confirmed in game.
   - So: `AddInvObj` puts armor into the armor slot when that slot is empty, which caused both failures. Equipping an item pushes out whatever else is held at 1000 + the slot.
   - Works with a full inventory too (confirmed in game): the new armor frees its cell before the old one needs it, as with a hot-swap in the inventory screen.
-- **Worm skin while macros run (2026-10-21, not yet tested in game):** psi_autocast calls `PsiMacroStarted` / `PsiMacroEnded` around every cast and chain; the dev armor tool defines them.
+- **Worm skin while macros run (2026-10-21, works in game):** psi_autocast calls `PsiMacroStarted` / `PsiMacroEnded` around every cast and chain; the dev armor tool defines them.
+  - **Verified:** an 8-step chain (three casts) and G's 2-step chain (`arm,6q`). Each time the worm skin went on as the chain started, and the hazard suit came back 0.5 s after "chain: done". A key running a single-cast file directly (no chain) hasn't been tried yet.
+  - **First try failed:** `LinkDest` belongs to script objects and the hook runs outside one ("the index 'LinkDest' does not exist"). Top-level functions use `sLink(l).dest`, and a test now keeps them free of script-only calls.
   - **When the first macro starts:** the worm skin goes on, unless it's already on or not in the inventory.
   - **Half a second after the last one ends:** the armor worn before goes back on. The delay is there because the cast's `fire_weapon 0` is only queued.
   - **With no armor worn before:** the worm skin stays on, since armor only leaves the slot when other armor takes its place.
