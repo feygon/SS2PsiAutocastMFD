@@ -392,6 +392,37 @@ def test_dev_armor_archetypes_exist(kpf, member):
 
 
 @needs_game
+def test_maintenance_follows_scps_wrench_rules():
+    """
+    WHY: A script can't send the maintenance tool its "used on this" frob, so the dev maintenance tool applies the
+    rules of SCP's scpWrench (the Maintenance Tool's script with SCP on). If SCP changes them, this flags it.
+    """
+    scp = zipfile.ZipFile(GAME / "mods/scp.kpf").read("sq_scripts/scpScript.nut").decode("latin-1")
+    wrench = scp.split("class scpWrench extends SqRootScript")[1].split("\nclass ")[0]
+    assert "hp + playerMaintSkill * 10.0, 0.0, 100.0" in wrench and "hp > 90" in wrench
+    assert 'Property.Get("Player", "BaseTechDesc", "Maintain")' in wrench
+    assert 'Property.Get(fixObj, "GunState", "Condition (%)")' in wrench
+    tool = (DEV_SCRIPTS / "psi_mfd_maintain.nut").read_text(encoding="utf-8")
+    assert "const PSI_MFD_MAINT_PER_SKILL = 10.0;" in tool and "const PSI_MFD_MAINT_UNUSED_ABOVE = 90;" in tool
+    for read in ('Property.Get("Player", "BaseTechDesc", "Maintain")', 'Property.Get(weapon, "ReqTechDesc", "Maintain")',
+                 'Property.Get(weapon, "GunState", "Condition (%)")', 'Property.Set(weapon, "GunState", "Condition (%)", '):
+        assert read in tool, read
+
+
+@needs_game
+@pytest.mark.parametrize("kpf,member", gamesys_files())
+def test_maintenance_tool_archetype_exists(kpf, member):
+    """WHY: The dev maintenance tool finds the tool by archetype name; a wrong name says there's none."""
+    data, table = gam_chunks(kpf, member)
+    names = set()
+    for obj, value in gam_records(data, table, "P$SymName"):
+        n = struct.unpack_from("<I", value, 0)[0]
+        names.add(value[4:4 + n].split(b"\0")[0].decode("latin-1"))
+    assert 'Object.InheritsFrom(obj, "Maintenance Tool")' in (DEV_SCRIPTS / "psi_mfd_maintain.nut").read_text(encoding="utf-8")
+    assert "Maintenance Tool" in names
+
+
+@needs_game
 @pytest.mark.parametrize("kpf,member", gamesys_files())
 def test_target_powers_are_the_gamesys_item_targeting_ones(kpf, member):
     """

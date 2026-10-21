@@ -88,6 +88,11 @@
   - **When the first macro starts:** the worm skin goes on, unless it's already on or not in the inventory.
   - **Half a second after the last one ends:** the armor worn before goes back on. The delay is there because the cast's `fire_weapon 0` is only queued.
   - **With no armor worn before:** the worm skin stays on, since armor only leaves the slot when other armor takes its place.
+- **Maintenance tool on the held weapon (2026-10-21, not yet tested in game):** `summon_obj PsiMfdMaintainWeapon`.
+  - **How the game does it:** the Maintenance Tool's script is `Wrench` in the base gamesys and `scpWrench` with SCP. SCP's is Squirrel (`mods\scp.kpf`, `sq_scripts\scpScript.nut`). It acts on `FrobToolEnd`, whose `message().DstObjId` a script can't fake, so the dev tool applies the same rules itself.
+  - **The rules:** nothing happens to a gun that's unresearched, broken, needs more Maintenance (`ReqTechDesc`) than the player's base skill (`BaseTechDesc`), or is above 90% (`GunState` "Condition (%)"). Otherwise the condition goes up 10% per skill point, up to 100%, and one tool is used up with its activate sound.
+  - **Kept in step:** a test checks the numbers against SCP's script.
+- **SCP names the equip slots** `ePlayerEquip.kEquipWeapon`, `kEquipArmor` and so on, so the enum exists in the remaster's Squirrel.
 - **Remember and restore:** `PsiMfdRememberArmor` stores the worn armor's number in the campaign quest variable `psi_mfd_saved_armor`; `PsiMfdRestoreArmor` puts that kind back on and resets it to 0. Not yet tested in game.
 
 ## Psi power data (for the MFD's cells)
