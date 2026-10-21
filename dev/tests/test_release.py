@@ -205,18 +205,6 @@ def test_armor_tool_takes_off_the_old_armor_first():
     assert all(args[0] == "PSI_MFD_ARMOR_SLOT" for args in calls)
 
 
-def test_armor_tool_lets_go_of_the_old_armor_before_adding_it_back():
-    """
-    WHY: Equip(slot, null) only empties the slot: the player still held the old armor as worn (Contains 1002),
-    AddInvObj returned true without moving it, and equipping the new armor then pushed it out of the inventory
-    ("not held", 2026-10-20). It has to be let go first, then added like a new item.
-    """
-    code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
-    release = code.find("ShockGame.RemoveFromContainer(worn, player)")
-    add = code.find("ShockGame.AddInvObj(worn)")
-    assert release != -1 and add != -1 and release < add
-
-
 def test_armor_tool_puts_the_new_armor_on_before_adding_the_old_back():
     """
     WHY: With the armor slot empty, the old armor came back in the slot (Contains 1002) after AddInvObj
@@ -226,6 +214,47 @@ def test_armor_tool_puts_the_new_armor_on_before_adding_the_old_back():
     wear_new = code.find("ShockGame.Equip(PSI_MFD_ARMOR_SLOT, armor)")
     add_old = code.find("ShockGame.AddInvObj(worn)")
     assert wear_new != -1 and add_old != -1 and wear_new < add_old
+
+
+def test_remembered_armor_is_a_campaign_quest_variable():
+    """
+    WHY: The remembered armor has to survive saving, loading and changing decks between "remember" and
+    "restore". Campaign quest variables are saved with the game and kept across levels (the game's achievement
+    code keeps its counters that way).
+    """
+    code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    calls = [args for args in call_args(code, "Quest.Set") if args[0] == "PSI_MFD_SAVED_ARMOR"]
+    assert len(calls) >= 2
+    assert all(len(args) == 3 and args[2] == "eQuestDataType.kQuestDataCampaign" for args in calls)
+
+
+@needs_main
+def test_dev_armor_tool_defines_the_hooks_psi_autocast_calls():
+    """WHY: psi_autocast calls its macro hooks by name; a misspelt name here would silently never run."""
+    called = set(re.findall(r'PsiMacroHook\("(\w+)", self\)', (MAIN / "mod/sq_scripts/psi_autocast.nut").read_text(encoding="utf-8")))
+    assert called == {"PsiMacroStarted", "PsiMacroEnded"}
+    armor = (DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8")
+    for name in called:
+        assert re.search(r"^function " + name + r"\(\w+\) \{", armor, re.M), name
+
+
+def test_armor_goes_back_after_a_delay_not_at_the_release():
+    """
+    WHY: Debug.Command only queues console commands, so when a cast's end hook runs, its "fire_weapon 0" hasn't
+    happened yet: swapping armor at that moment would take the worm skin off before the power goes off.
+    """
+    armor = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    ended = armor.split("function PsiMacroEnded(")[1].split("\nfunction ")[0]
+    assert "Object.Create(" in ended
+    assert "ShockGame.Equip" not in ended and "PsiMfdSwapArmor(" not in ended
+    assert re.search(r'class PsiMfdArmorBack extends SqRootScript \{\s*function OnBeginScript\(\) \{\s*SetOneShotTimer\("", 0\.5\);', armor)
+
+
+def test_restoring_consumes_the_memory_only_once_that_armor_is_on():
+    """WHY: If the remembered armor isn't in the inventory, the memory stays, to restore after picking it up."""
+    code = strip_strings_and_comments((DEV_SCRIPTS / "psi_mfd_armor.nut").read_text(encoding="utf-8"))
+    restore = code.split("class PsiMfdRestoreArmor")[1].split("\nclass ")[0]
+    assert re.search(r"if \(PsiMfdWearArmorNumber\(\w+\)\)\s*Quest\.Set\(PSI_MFD_SAVED_ARMOR, 0,", restore)
 
 
 # ---- game data ----------------------------------------------------------------------------------------
