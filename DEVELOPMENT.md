@@ -75,7 +75,12 @@
   - **When the MFD binds K on load:** when K is free, or when it's a macro key whose file has no macro. A K that holds a macro is left alone.
   - **How K shows in the keyboard view:** bound to it, "used by these mods"; unbound, "reserved for the maintenance tool".
 - **Still dev-only:** bullets, respec, the probe, and the armor console tools (`dev/sq_scripts/psi_mfd_armor_tools.nut`: wear, remember, restore).
-- **Not yet checked in game:** the button and its saved setting, and K's binding on load (free, and taken over from an empty macro key).
+- **Checked in game with the release build (2026-10-21):**
+  - A chain run before ticking didn't swap.
+  - Ticking the button wrote `worm_skin_swap 1`.
+  - The next chain swapped Vacc Suit to Worm Skin and back, 0.5 s after "chain: done".
+  - The maintenance tool ran from B: "Pistol: condition 76% to 100%".
+- **Not checked in game:** K's binding on load, either free or taken over from an empty macro key; the author's K holds a macro. The setup script's K line is tested by running the real .bat on fixtures.
 
 ## Dev tools and inventory facts (2026-10-20)
 
